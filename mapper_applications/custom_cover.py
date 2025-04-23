@@ -12,8 +12,8 @@ from sklearn.utils.validation import check_is_fitted
 
 from gtda.mapper.utils._cover import _check_has_one_column, \
     _remove_empty_and_duplicate_intervals
-from gtda.utils._docs import adapt_fit_transform_docs
-from gtda.utils.intervals import Interval
+#from gtda.utils._docs import adapt_fit_transform_docs
+#from gtda.utils.intervals import Interval
 from gtda.utils.validation import validate_params
 
 
@@ -31,7 +31,16 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
         self.gain = gain
         self.kind = kind
     
+    # In the original code there are two types of fit. Here there is only one. 
+    # However it seems that the structure is somewhat important and thus is retained here.
+    def _fit_mock(self, X):
+        self.left_limits_, self.right_limits_ = self._find_interval_limits(X, self.resolution, self.gain, self.kind)
+        return self
+    
     def fit(self, X, y=None): 
+
+        """" Explanation here"""
+
         X = check_array(X, ensure_2d=False)
         validate_params(self.get_params(), self._hyperparameters)
         if self.gain <= 1e-8:
@@ -42,13 +51,21 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
         if X.ndim == 2:
             _check_has_one_column(X)
 
-        self.left_limits, self.right_limits = self._find_interval_limits(X, self.resolution, self.gain, self.kind)
-        return self
+        fitter = self._fit_mock
+        return fitter(X)
     
     def _transform(self, X):
-        return np.logical_and(X > self.left_limits, X < self.right_limits)
+        Xt = np.column_stack([
+            np.logical_and(X[:, 0] > left, X[:, 0] < right)
+            for left, right in zip(self.left_limits_, self.right_limits_)
+            ])
+        return Xt
+        #return np.logical_and(X > self.left_limits_, X < self.right_limits_)
     
     def transform(self, X, y=None):
+
+        """" Explanation here
+        """
 
         check_is_fitted(self)
         Xt = check_array(X, ensure_2d=False)
@@ -58,19 +75,25 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
         else:
             Xt = Xt[:, None]
 
-        if self.kind == 'boundary':
-            self._check_limit_attrs()
+        # IF statement from onedimensional cover
+        #if self.kind == 'boundary':
+        #    self._check_limit_attrs()
         
         Xt = self._transform(Xt)
         Xt = _remove_empty_and_duplicate_intervals(Xt)
+        #print("Interval masks shape:", Xt.shape)
+        #print("Non-empty intervals:", Xt.sum(axis=0))
         return Xt
     
     def _fit_transform(self, X):
-        self.left_limits, self.right_limits = self._find_interval_limits(X, self.resolution, self.gain, self.kind)
-        Xt = self._transform(X)
+        Xt = self._fit_mock(X)._transform(X)
         return Xt
 
     def fit_transform(self, X, y = None, **fit_params):
+
+        """" Explanation here
+        """
+
         Xt = check_array(X, ensure_2d=False)
         validate_params(self.get_params(), self._hyperparameters)
 
@@ -81,7 +104,13 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
 
         Xt = self._fit_transform(Xt)
         Xt = _remove_empty_and_duplicate_intervals(Xt)
+        #print("Interval masks shape:", Xt.shape)
+        #print("Non-empty intervals:", Xt.sum(axis=0))
         return Xt
+    
+    def get_fitted_intervals(self):
+        check_is_fitted(self)
+        return list(zip(self.left_limits_, self.right_limits_))
     
     def _check_limit_attrs(self):
         limit_attrs = ['left_limits_', 'right_limits_']
@@ -96,7 +125,7 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
     
     def _find_interval_limits(self, X, resolution, gain, kind='maximal'):
         min_val, max_val = np.min(X), np.max(X)
-        centre = (max_val - min_val) / 2
+        centre = (max_val + min_val) / 2
 
         # innitiate boundary case which is changed if kind is maximal
         is_maximal = False
@@ -173,7 +202,7 @@ class ResolutionCover(BaseEstimator, TransformerMixin):
                                         gain=self.gain,
                                         kind=self.kind
                                         )
-        fitter = '_find_interval_limits'
+        fitter = '_fit_mock'
         self._coverers = [partial(self._clone_and_apply_to_column, X, coverer, fitter)(i)
                           for i in range(X.shape[1])
                           ]
@@ -181,6 +210,10 @@ class ResolutionCover(BaseEstimator, TransformerMixin):
         return self
 
     def fit(self, X, y=None): 
+
+        """" Explanation here
+        """
+
         X = check_array(X, ensure_2d=False)
         validate_params(self.get_params(), self._hyperparameters)
        
@@ -234,10 +267,11 @@ class ResolutionCover(BaseEstimator, TransformerMixin):
                 f"Different number of columns between `fit` ({n_features_fit})"
                 f" and `transform` ({n_features}).")
 
-        if self.kind == 'balanced':
+        # IF statement from original code
+        #if self.kind == 'balanced':
             # Test on the first coverer whether the left_limits_ and
             # right_limits_ attributes are present
-            self._coverers[0]._check_limit_attrs()
+        #    self._coverers[0]._check_limit_attrs()
 
         Xt = self._transform(Xt)
         return Xt
@@ -270,8 +304,8 @@ class ResolutionCover(BaseEstimator, TransformerMixin):
             Xt = Xt[:, None]
 
         #if self.kind == 'uniform':
-        #    Xt = self._fit(Xt)._transform(Xt)
-        #    return Xt
+        Xt = self._fit(Xt)._transform(Xt)
+        return Xt
 
         # Calculate 1D cover for each column
         coverer = OneDimResolutionCover(kind=self.kind,
@@ -302,4 +336,6 @@ class ResolutionCover(BaseEstimator, TransformerMixin):
                        for t in product(*intervals)]).T
 
         Xt = _remove_empty_and_duplicate_intervals(Xt)
+        #print("Interval masks shape:", Xt.shape)
+        #print("Non-empty intervals:", Xt.sum(axis=0))
         return Xt
