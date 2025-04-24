@@ -10,7 +10,8 @@ sys.path.insert(0, project_root)
 
 
 import gtda.mapper as mpr  # type: ignore
-from custom_cover import ResolutionCover, OneDimResolutionCover
+from custom_cover import ResolutionCover
+from custom_clusterer import RipsClusering
 import gudhi
 import numpy as np
 import pandas as pd  # type: ignore
@@ -27,7 +28,7 @@ X, y = df.values[:, :-1], df.values[:, -1]
 X = StandardScaler().fit_transform(X)
 y = np.where(y == "Normal", 0, y)
 y = np.where(y == "Chemical_Diabetic", 1, y)
-y = np.where(y == "Overt_Diabetic", 2, y)
+y = np.where(y == "Overt_Diabetic", 1, y) # change from the original to get a 2 color mapper result as in the paper
 
 print(f"size of Data is {len(X)}")
 
@@ -66,7 +67,7 @@ exponent = np.inf
 # calculations for relative gap size and eccentricity
 dist_mtrx = squareform(pdist(X, metric = 'euclidean'))
 Xt = mpr.Eccentricity(exponent=exponent).fit(X).transform(X) # For the calculation of the n_intervals
-print(f"Eccentricity vector:\n", Xt)
+#print(f"Eccentricity vector:\n", Xt)
 
 np.fill_diagonal(dist_mtrx, np.inf)
 row_minima = np.min(dist_mtrx, axis = 1, keepdims=True) # For the calculation of relative_gap_size
@@ -78,12 +79,6 @@ overlap_frac = 0.4  # Specify fractional overlap (gain)
 delta = average_delta(X, n_iterations, beta)
 print(f"Delta is {delta}")
 
-# Create Rips complex
-rips_complex = gudhi.RipsComplex(
-    points = X,
-    max_edge_length = delta
-).create_simplex_tree(max_dimension = 1)
-print(rips_complex)
 relative_gap_size = min(1, delta / np.max(Xt)) # parameter for mpr.FirstSimpleGap
 print(f"relative gap size is {relative_gap_size}")
 
@@ -102,10 +97,11 @@ print(f"image length is {np.max(Xt)-np.min(Xt)}")
 n_intervals = math.ceil((np.max(Xt)-np.min(Xt)) / resolution) + 2 # Specify numbers of intervals to use
 print(f"Resolution is {resolution} and number of intervals is {n_intervals}")
 
-clusterer = mpr.FirstSimpleGap(relative_gap_size=relative_gap_size)
+clusterer = RipsClusering(max_edge_length=delta)
 #clusterer = Automato(random_state=42)
+#clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
 
-def mock(X, resolution, gain, is_maximal = True):
+def mock(X, resolution, gain, is_maximal = False):
     range_len = np.max(X) - np.min(X)
     step = resolution * (1 - gain)
     centre = (np.max(X) + np.min(X)) / 2
@@ -177,6 +173,6 @@ fig.update_layout(
 if not os.path.exists("./mapper_applications/figures/"):
     os.mkdir("./mapper_applications/figures/")
 filename = (
-    "./mapper_applications/figures/diabetes_dataset_custom.svg"
+    "./mapper_applications/figures/diabetes_dataset_Rips_2_Intervals.svg"
 )
 fig.write_image(filename)
