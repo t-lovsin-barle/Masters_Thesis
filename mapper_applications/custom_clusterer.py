@@ -11,6 +11,196 @@ from sklearn.utils import check_array
 
 from gtda.utils.validation import validate_params
 
+# Since the goal is to reproduce the results from Carriere et al. (2018) we need to
+# cluster the same way they did. First they build a Rips Graph on the data points and
+# then take the connected components as clusters when looking at the preimages. What 
+# RipsClustering does is something similar, which should yield the same result. Given a 
+# pre-image the RipsClustering then constructs a Rips graph on top of it instead of first
+# creating the Rips graph and then cutting it. This should not be neaningfully different
+# since the same threshold is used in both cases.
+
+# Carriere et al. (2018): https://jmlr.org/papers/v19/17-291.html
+
+class RipsClusering(ClusterMixin, BaseEstimator):
+
+    # This clusterer is modeled after the FirstSimpleGap clusterer from the giotto-tda
+    # library.
+
+    # This clusterer roughly works as follows. First it creates a Rips complex using the 
+    # Gudhi library, limiting it to dimention 1. From the Rips complex it creates a graph
+    # like structure, such that DFS can be used to find spaning trees, labeling the vertices
+    # that belong to the along the way. It then outputs a list of lables, each corresponding
+    # to a data point in 'X' to be used in the mapper pipeline.
+
+    # Parameters
+    # -----------
+
+    # max_edge_length: The threshold for the Rips Complex. It is computed by by taking 100 random
+    #   samples of the data and then calculating the Hausdorff distance from the data to the samples
+    #   and then averageing it. The sample size is given in Proposiiton 13 in Carriere et al. (2018).
+
+    _hyperparameters = {'max_edge_length': {'type': float}}
+
+    def __init__(self, max_edge_length=None):
+        self.max_edge_length = max_edge_length
+
+    def fit(self, X, y=None):
+        
+        # Routine taken from the FirstSimpleGap clusterer from giotto-tda.
+        X = check_array(X)
+        validate_params(
+            self.get_params(), self._hyperparameters, exclude=['memory'])
+
+        if X.shape[0] == 1:
+            self.labels_ = np.array([0])
+            self.n_clusters_ = 1
+            return self
+        
+        # Create the Rips Complex with the bootsraped threshold.
+        self.RipsComplex = gudhi.RipsComplex(
+                                            points=X,
+                                            max_edge_length=self.max_edge_length
+                                            ).create_simplex_tree(max_dimension = 1)
+        
+        # Innitiate graph-like structure.
+        self.adjacency = defaultdict(set)
+        self.vertices = set()
+
+        # Fill the graph like structure.
+        for simplex in self.RipsComplex.get_simplices():
+            smplx = simplex[0]
+            if len(smplx) == 1:
+                self.vertices.add(smplx[0])
+            elif len(smplx) == 2:
+                u, v = smplx
+                self.adjacency[u].add(v)
+                self.adjacency[v].add(u)
+
+        labels = {}
+        current_label = 0
+
+        # Label the connected components using DFS.
+        for v in self.vertices:
+            if v not in labels:
+                stack = [v]
+                while stack:
+                    node = stack.pop()
+                    if node not in labels:
+                        labels[node] = current_label
+                        stack.extend(self.adjacency[node])
+                current_label += 1
+        
+        # Convert the list into an array.
+        label_list = [-1] * len(self.vertices)
+        for v in self.vertices:
+            label_list[v] = labels[v]
+        
+        # Taken from FirstSimpleGap
+        self.labels_= label_list
+        self.n_clusters_ = len(set(label_list))
+        return self
+
+class AutoRipsClusering(ClusterMixin, BaseEstimator):
+    
+    # Identical to RipsClustering apart from the adition of the bootstrap to compute the delta.
+
+    # Parameters
+    # ----------
+
+    # beta: Sample constant used in Proposition 13 in Carriere et al. (2018). By default set to
+    #   0.001 as stated in section 5 of the paper.
+
+    # n_iterations: Number of random samples to be taken. By default set to 100 as stated in section
+    #   5 of Carriere et al. (2018).
+
+    _hyperparameters = {'beta': {'type': float},
+                        'n_iterations':{'type': int}
+                        }
+
+    def __init__(self, beta=0.001, n_iterations=100):
+        self.beta = beta
+        self.n_iterations = n_iterations
+    
+
+    def fit(self, X, y=None):
+
+        # Routine taken from the FirstSimpleGap clusterer from giotto-tda.
+        X = check_array(X)
+        validate_params(
+            self.get_params(), self._hyperparameters, exclude=['memory'])
+
+        if X.shape[0] == 1:
+            self.labels_ = np.array([0])
+            self.n_clusters_ = 1
+            return self
+        
+        # Computation of the threshold for the Rips Complex. The bootstrap is adapted from the
+        # set_graph_from_automatic_rips function from the C++ Gudhi source code found here:
+        # https://gudhi.inria.fr/doc/latest/_g_i_c_8h_source.html
+
+        self.delta = 0
+        s_n = math.floor(len(X) / (np.log(len(X)) ** (1 + self.beta)))
+        for i in range(self.n_iterations):
+            indices = np.random.choice(len(X), size=s_n, replace=False)
+            all_indices = np.arange(len(X))
+            c_indices = np.setdiff1d(all_indices, indices)
+            dist_matrix = cdist(X[c_indices],X[indices])
+            hausdorff_dist_from_data_to_sample = 0
+
+            for j in range(len(c_indices)):
+                min_j = dist_matrix[j,0]
+                
+                for k in range(len(indices)):
+                    min_j = min(min_j, dist_matrix[j,k])
+            
+            hausdorff_dist_from_data_to_sample = max(hausdorff_dist_from_data_to_sample, min_j)
+            self.delta = self.delta + hausdorff_dist_from_data_to_sample / self.n_iterations
+        
+        # Create the Rips Complex with the bootsraped threshold.
+        self.RipsComplex = gudhi.RipsComplex(
+                                            points=X,
+                                            max_edge_length=self.delta
+                                            ).create_simplex_tree(max_dimension = 1)
+        
+        # Innitiate graph-like structure.
+        self.adjacency = defaultdict(set)
+        self.vertices = set()
+
+        # Fill the graph like structure.
+        for simplex in self.RipsComplex.get_simplices():
+            smplx = simplex[0]
+            if len(smplx) == 1:
+                self.vertices.add(smplx[0])
+            elif len(smplx) == 2:
+                u, v = smplx
+                self.adjacency[u].add(v)
+                self.adjacency[v].add(u)
+
+        labels = {}
+        current_label = 0
+
+        # Label the connected components using DFS.
+        for v in self.vertices:
+            if v not in labels:
+                stack = [v]
+                while stack:
+                    node = stack.pop()
+                    if node not in labels:
+                        labels[node] = current_label
+                        stack.extend(self.adjacency[node])
+                current_label += 1
+        
+        # Convert the list into an array.
+        label_list = [-1] * len(self.vertices)
+        for v in self.vertices:
+            label_list[v] = labels[v]
+
+        # Taken from FirstSimpleGap
+        self.labels_= label_list
+        self.n_clusters_ = len(set(label_list))
+        return self
+
+# The following functions along wiht the class ParallelClustering were left as is.
 
 def _sample_weight_computer(rel_indices, sample_weight):
     return {"sample_weight": sample_weight[rel_indices]}
@@ -266,131 +456,3 @@ class ParallelClustering(BaseEstimator):
         """
         Xt = self.fit_predict(X, y, **fit_params)
         return Xt
-class RipsClusering(ClusterMixin, BaseEstimator):
-
-    _hyperparameters = {'max_edge_length': {'type': float}}
-
-    def __init__(self, max_edge_length=None):
-        #self.distance_matrix = distance_matrix
-        self.max_edge_length = max_edge_length
-
-    def fit(self, X, y=None):
-        X = check_array(X)
-        validate_params(
-            self.get_params(), self._hyperparameters, exclude=['memory'])
-
-        if X.shape[0] == 1:
-            self.labels_ = np.array([0])
-            self.n_clusters_ = 1
-            return self
-        
-        self.RipsComplex = gudhi.RipsComplex(
-                                            points=X,
-                                            max_edge_length=self.max_edge_length
-                                            ).create_simplex_tree(max_dimension = 1)
-        
-        self.adjacency = defaultdict(set)
-        self.vertices = set()
-
-        for simplex in self.RipsComplex.get_simplices():
-            smplx = simplex[0]
-            if len(smplx) == 1:
-                self.vertices.add(smplx[0])
-            elif len(smplx) == 2:
-                u, v = smplx
-                self.adjacency[u].add(v)
-                self.adjacency[v].add(u)
-
-        labels = {}
-        current_label = 0
-
-        for v in self.vertices:
-            if v not in labels:
-                stack = [v]
-                while stack:
-                    node = stack.pop()
-                    if node not in labels:
-                        labels[node] = current_label
-                        stack.extend(self.adjacency[node])
-                current_label += 1
-        
-        label_list = [-1] * len(self.vertices)
-        for v in self.vertices:
-            label_list[v] = labels[v]
-
-        self.labels_= label_list
-        self.n_clusters_ = len(set(label_list))
-        return self
-
-class AutoRipsClusering(ClusterMixin, BaseEstimator):
-
-    _hyperparameters = {'beta': {'type': float},
-                        'n_iterations':{'type': int}
-                        }
-
-    def __init__(self, beta=0.001, n_iterations=100):
-        self.beta = beta
-        self.n_iterations = n_iterations
-    
-
-    def fit(self, X, y=None):
-        X = check_array(X)
-        validate_params(
-            self.get_params(), self._hyperparameters, exclude=['memory'])
-
-        if X.shape[0] == 1:
-            self.labels_ = np.array([0])
-            self.n_clusters_ = 1
-            return self
-        
-        self.delta = 0
-        s_n = math.floor(len(X) / (np.log(len(X)) ** (1 + self.beta)))
-        for i in range(self.n_iterations):
-            indices = np.random.choice(len(X), size=s_n, replace=False)
-            all_indices = np.arange(len(X))
-            c_indices = np.setdiff1d(all_indices, indices)
-            dist_matrix = cdist(X[c_indices],X[indices])
-            hausdorff_dist_from_data_to_sample = 0
-            for j in range(len(c_indices)):
-                min_j = dist_matrix[j,0]
-                for k in range(len(indices)):
-                    min_j = min(min_j, dist_matrix[j,k])
-            hausdorff_dist_from_data_to_sample = max(hausdorff_dist_from_data_to_sample, min_j)
-            self.delta = self.delta + hausdorff_dist_from_data_to_sample / self.n_iterations
-        self.RipsComplex = gudhi.RipsComplex(
-                                            points=X,
-                                            max_edge_length=self.delta
-                                            ).create_simplex_tree(max_dimension = 1)
-        
-        self.adjacency = defaultdict(set)
-        self.vertices = set()
-
-        for simplex in self.RipsComplex.get_simplices():
-            smplx = simplex[0]
-            if len(smplx) == 1:
-                self.vertices.add(smplx[0])
-            elif len(smplx) == 2:
-                u, v = smplx
-                self.adjacency[u].add(v)
-                self.adjacency[v].add(u)
-
-        labels = {}
-        current_label = 0
-
-        for v in self.vertices:
-            if v not in labels:
-                stack = [v]
-                while stack:
-                    node = stack.pop()
-                    if node not in labels:
-                        labels[node] = current_label
-                        stack.extend(self.adjacency[node])
-                current_label += 1
-        
-        label_list = [-1] * len(self.vertices)
-        for v in self.vertices:
-            label_list[v] = labels[v]
-
-        self.labels_= label_list
-        self.n_clusters_ = len(set(label_list))
-        return self
