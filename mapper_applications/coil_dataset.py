@@ -11,7 +11,7 @@ sys.path.insert(0, project_root)
 
 import gtda.mapper as mpr  # type: ignore
 from custom_cover import ResolutionCover
-from custom_clusterer import RipsClusering
+from custom_clusterer import AutoRipsClusering
 import numpy as np
 import pandas as pd  # type: ignore
 from sklearn.preprocessing import StandardScaler  # type: ignore
@@ -20,7 +20,7 @@ import sklearn
 
 from automato import Automato
 from mapper_applications.eccentricity_subclassed import EccentricitySubclassed
-from scipy.spatial.distance import pdist, squareform, directed_hausdorff
+from scipy.spatial.distance import pdist, squareform, directed_hausdorff, cdist
 
 import os
 import numpy as np
@@ -55,28 +55,8 @@ df = pd.DataFrame(data)
 
 # Split features and label
 X, y = df.values[:, :-1], df.values[:, -1]
-#X = StandardScaler().fit_transform(X)
 
-print(f"size of Data is {len(X)}")
-
-def average_delta(data, n_iterations, beta): # Average delta over N random samples
-    delta = 0
-    s_n = math.ceil(len(data) / (np.log(len(data)) ** (1 + beta))) # Sample size
-    print
-    for i in range(n_iterations):
-
-        # Choose m points randomly
-        indices = np.random.choice(len(data), size=s_n, replace=False)
-        data_sampled = data[indices]
-
-        # Hausdorff distance between data and data_sampled
-        d_XXs = directed_hausdorff(data,data_sampled)[0]
-        d_XsX = directed_hausdorff(data_sampled,data)[0]
-        delta = delta + max(d_XXs,d_XsX)
-    print(f"Sample size is {s_n}")
-    return delta / n_iterations
-
-def empiric_mod_of_contin(func, delta, dist_mtrx, epsilon):
+def empiric_mod_of_contin(func, delta, dist_mtrx, epsilon=0.001):
     V = 0
     for i in range(len(dist_mtrx)):
         for j in range(i,len(dist_mtrx)):
@@ -85,94 +65,56 @@ def empiric_mod_of_contin(func, delta, dist_mtrx, epsilon):
                 if V <= V_:
                     V = V_
     return V + epsilon
-
-# Innitiate delta parameters
-beta = 0.001
-n_iterations = 100
-exponent = np.inf
+def delta_(X, beta=0.001, n_iterations=100):
+    delta = 0
+    s_n = math.floor(len(X) / (np.log(len(X)) ** (1 + beta)))
+    for i in range(n_iterations):
+        indices = np.random.choice(len(X), size=s_n, replace=False)
+        all_indices = np.arange(len(X))
+        c_indices = np.setdiff1d(all_indices, indices)
+        dist_matrix = cdist(X[c_indices],X[indices])
+        hausdorff_dist_from_data_to_sample = 0
+        for j in range(len(c_indices)):
+            min_j = dist_matrix[j,0]
+            for k in range(len(indices)):
+                min_j = min(min_j, dist_matrix[j,k])
+        hausdorff_dist_from_data_to_sample = max(hausdorff_dist_from_data_to_sample, min_j)
+        delta = delta + hausdorff_dist_from_data_to_sample / n_iterations
+    return delta
 
 # calculations for relative gap size and eccentricity
 dist_mtrx = squareform(pdist(X, metric = 'euclidean'))
 
-Xt = sklearn.decomposition.PCA(n_components=1).fit(X).transform(X) # For the calculation of the n_intervals
-#print(f"PCA vector:\n", Xt)
-
+func = sklearn.decomposition.PCA(n_components=1).fit(X).transform(X) # For the calculation of the n_intervals
 np.fill_diagonal(dist_mtrx, np.inf)
-row_minima = np.min(dist_mtrx, axis = 1, keepdims=True) # For the calculation of relative_gap_size
+
 
 
 # Instantiate Mapper parameters
 
 overlap_frac = 0.4  # Specify fractional overlap (gain)
-delta = average_delta(X, n_iterations, beta)
-print(f"Delta is {delta}")
-
-relative_gap_size = min(1, delta / np.max(Xt)) # parameter for mpr.FirstSimpleGap
-print(f"relative gap size is {relative_gap_size}")
-
-epsilon = 0.001
 V = empiric_mod_of_contin(
-    func=Xt, 
-    delta=delta,
-    dist_mtrx=dist_mtrx,
-    epsilon=epsilon
+    func=func, 
+    delta=delta_(X),
+    dist_mtrx=dist_mtrx
     )
 
 print(f"V is \n", V)
 resolution = V[0] / overlap_frac
-print(f"max and min are {np.max(Xt), np.min(Xt)}")
-print(f"image length is {np.max(Xt)-np.min(Xt)}")
-n_intervals = math.ceil((np.max(Xt)-np.min(Xt)) / resolution) + 2 # Specify numbers of intervals to use
-print(f"Resolution is {resolution} and number of intervals is {n_intervals}")
 
-#clusterer = RipsClusering(max_edge_length=delta)
-clusterer = Automato(random_state=42)
+clusterer = AutoRipsClusering()
+#clusterer = Automato(random_state=42)
 #clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
 
-def mock(X, resolution, gain, is_maximal = False):
-    range_len = np.max(X) - np.min(X)
-    step = resolution * (1 - gain)
-    centre = (np.max(X) + np.min(X)) / 2
-    if is_maximal: 
-        interval_nr = math.ceil(range_len / resolution) + 2 # we could also try with round, which will yield more overlap on the boundary
-    else:
-        interval_nr = round(range_len / resolution) + 2
-        
-    if interval_nr % 2 == 1:
-            # since nr of intervalls odd we center the median interval in the middle of the range and we have half of them to the left.
-        # the right side we derive from taking the appropriate step lengths
-        first = centre - resolution / 2 - (interval_nr - 1) * step / 2
-        last = first + (interval_nr - 1) * step
-        left_limits = np.linspace(first, last, num=interval_nr, endpoint=True)
-        right_limits = left_limits + resolution
-        
-    if interval_nr % 2 == 0:
-        # if the interval nr is even then we cenre the overlap of the middle two intervals in the middle of the range            
-        # we calculate the right side from the left accordingly
-        first = centre - gain * resolution / 2 - interval_nr * step / 2
-        last = first + (interval_nr - 1) * step
-        left_limits = np.linspace(first, last, num=interval_nr, endpoint=True)
-        right_limits = left_limits + resolution
-
-    return left_limits, right_limits
-l,r= mock(X=Xt, resolution=resolution, gain=overlap_frac, is_maximal=True)
-print(f"left is {l} and right is {r}")
-print("interval lengths", r-l)
-
-cover = mpr.CubicalCover(
-    n_intervals=n_intervals,
-    overlap_frac=overlap_frac
-)
-cover2 = ResolutionCover(
+cover = ResolutionCover(
     resolution=resolution,
-    gain=overlap_frac,
-    kind='maximal'
+    gain=overlap_frac
 )
 #print(f"cover: \n", cover.fit_transform(X))
 n_jobs = 1
 pipe_custom = mpr.make_mapper_pipeline(
     filter_func=sklearn.decomposition.PCA(n_components=1),
-    cover=cover2,
+    cover=cover,
     clusterer=clusterer,
     verbose=False,
     n_jobs=n_jobs, 
@@ -201,6 +143,6 @@ fig.update_layout(
 if not os.path.exists("./mapper_applications/figures/"):
     os.mkdir("./mapper_applications/figures/")
 filename = (
-    "./mapper_applications/figures/Coil_dataset_.svg"
+    "./mapper_applications/figures/Coil_dataset_Bruh.svg"
 )
 fig.write_image(filename)

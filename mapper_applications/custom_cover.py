@@ -22,19 +22,17 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
 
     _hyperparameters = {
         'resolution': {'type': float},
-        'gain': {'type': float},
-        'kind': {'type': str, 'in':['maximal','boundary']}
+        'gain': {'type': float}
     }
 
-    def __init__(self, resolution= None, gain= None, kind='maximal'):
+    def __init__(self, resolution= None, gain= None):
         self.resolution = resolution
         self.gain = gain
-        self.kind = kind
     
     # In the original code there are two types of fit. Here there is only one. 
     # However it seems that the structure is somewhat important and thus is retained here.
     def _fit_mock(self, X):
-        self.left_limits_, self.right_limits_ = self._find_interval_limits(X, self.resolution, self.gain, self.kind)
+        self.left_limits_, self.right_limits_ = self._find_interval_limits(X, self.resolution, self.gain)
         return self
     
     def fit(self, X, y=None): 
@@ -123,49 +121,28 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
                 "call 'fit' explicitly on the same data before using this "
                 "method.")
     
-    def _find_interval_limits(self, X, resolution, gain, kind='maximal'):
+    def _find_interval_limits(self, X, resolution, gain):
         min_val, max_val = np.min(X), np.max(X)
-        centre = (max_val + min_val) / 2
 
         # innitiate boundary case which is changed if kind is maximal
-        is_maximal = False
-        is_boundary = True
-
-        if kind == 'maximal':
-            is_maximal = True
-            is_boundary = False
         
-        left_limits, right_limits = self._cover_limits(min_val, max_val, centre, resolution, gain, is_maximal, is_boundary)
+        left_limits, right_limits = self._cover_limits(min_val, max_val, resolution, gain)
         left_limits[0], right_limits[-1] = -np.inf, np.inf
         
         return left_limits, right_limits
     
     @staticmethod
-    def _cover_limits(min_val, max_val, centre, resolution, gain, is_maximal, is_boundary):
-        range_len = max_val - min_val
+    def _cover_limits(min_val, max_val, resolution, gain):
         step = resolution * (1 - gain)
-
-        if is_maximal:
-            interval_nr = math.ceil(range_len / resolution) + 2 # we could also try with round, which will yield more overlap on the boundary
-        elif is_boundary:
-            interval_nr = round(range_len / resolution) + 2
-        
-        if interval_nr % 2 == 1:
-            # since nr of intervalls odd we center the median interval in the middle of the range and we have half of them to the left.
-            # the right side we derive from taking the appropriate step lengths
-            first = centre - resolution / 2 - (interval_nr - 1) * step / 2
-            last = first + (interval_nr - 1) * step
-            left_limits = np.linspace(first, last, num=interval_nr, endpoint=True)
-            right_limits = left_limits + resolution
-        
-        if interval_nr % 2 == 0:
-            # if the interval nr is even then we cenre the overlap of the middle two intervals in the middle of the range
-            # we calculate the right side from the left accordingly
-            first = centre - gain * resolution / 2 - interval_nr * step / 2
-            last = first + (interval_nr - 1) * step
-            left_limits = np.linspace(first, last, num=interval_nr, endpoint=True)
-            right_limits = left_limits + resolution
-
+        left = min_val
+        counter = 1
+        while left + resolution <= max_val and max_val + gain * resolution - (left + resolution) >= resolution:
+            left += step
+            counter += 1
+        left += step
+        counter += 1
+        left_limits = np.linspace(min_val, left, num=counter, endpoint=True)
+        right_limits = left_limits + resolution
         return left_limits, right_limits
     
 #@adapt_fit_transform_docs
@@ -173,14 +150,12 @@ class ResolutionCover(BaseEstimator, TransformerMixin):
 
     _hyperparameters = {
         'resolution': {'type': float},
-        'gain': {'type': float},
-        'kind': {'type': str, 'in':['maximal','boundary']}
+        'gain': {'type': float}
     }
 
-    def __init__(self, resolution= None, gain= None, kind='maximal'):
+    def __init__(self, resolution= None, gain= None):
         self.resolution = resolution
         self.gain = gain
-        self.kind = kind
 
     def _clone_and_apply_to_column(self, X, coverer, method_name, i):
         # method is either a fit-type or a fit_transform-type method
@@ -199,8 +174,7 @@ class ResolutionCover(BaseEstimator, TransformerMixin):
     def _fit(self, X):
         coverer = OneDimResolutionCover(
                                         resolution=self.resolution,
-                                        gain=self.gain,
-                                        kind=self.kind
+                                        gain=self.gain
                                         )
         fitter = '_fit_mock'
         self._coverers = [partial(self._clone_and_apply_to_column, X, coverer, fitter)(i)

@@ -1,7 +1,9 @@
 from inspect import signature
 
 import numpy as np
+import math
 import gudhi
+from scipy.spatial.distance import cdist
 from collections import defaultdict
 from joblib import Parallel, delayed
 from sklearn.base import BaseEstimator, ClusterMixin, clone
@@ -281,10 +283,11 @@ class RipsClusering(ClusterMixin, BaseEstimator):
             self.labels_ = np.array([0])
             self.n_clusters_ = 1
             return self
+        
         self.RipsComplex = gudhi.RipsComplex(
                                             points=X,
                                             max_edge_length=self.max_edge_length
-            ).create_simplex_tree(max_dimension = 1)
+                                            ).create_simplex_tree(max_dimension = 1)
         
         self.adjacency = defaultdict(set)
         self.vertices = set()
@@ -319,4 +322,75 @@ class RipsClusering(ClusterMixin, BaseEstimator):
         self.n_clusters_ = len(set(label_list))
         return self
 
+class AutoRipsClusering(ClusterMixin, BaseEstimator):
 
+    _hyperparameters = {'beta': {'type': float},
+                        'n_iterations':{'type': int}
+                        }
+
+    def __init__(self, beta=0.001, n_iterations=100):
+        self.beta = beta
+        self.n_iterations = n_iterations
+    
+
+    def fit(self, X, y=None):
+        X = check_array(X)
+        validate_params(
+            self.get_params(), self._hyperparameters, exclude=['memory'])
+
+        if X.shape[0] == 1:
+            self.labels_ = np.array([0])
+            self.n_clusters_ = 1
+            return self
+        
+        self.delta = 0
+        s_n = math.floor(len(X) / (np.log(len(X)) ** (1 + self.beta)))
+        for i in range(self.n_iterations):
+            indices = np.random.choice(len(X), size=s_n, replace=False)
+            all_indices = np.arange(len(X))
+            c_indices = np.setdiff1d(all_indices, indices)
+            dist_matrix = cdist(X[c_indices],X[indices])
+            hausdorff_dist_from_data_to_sample = 0
+            for j in range(len(c_indices)):
+                min_j = dist_matrix[j,0]
+                for k in range(len(indices)):
+                    min_j = min(min_j, dist_matrix[j,k])
+            hausdorff_dist_from_data_to_sample = max(hausdorff_dist_from_data_to_sample, min_j)
+            self.delta = self.delta + hausdorff_dist_from_data_to_sample / self.n_iterations
+        self.RipsComplex = gudhi.RipsComplex(
+                                            points=X,
+                                            max_edge_length=self.delta
+                                            ).create_simplex_tree(max_dimension = 1)
+        
+        self.adjacency = defaultdict(set)
+        self.vertices = set()
+
+        for simplex in self.RipsComplex.get_simplices():
+            smplx = simplex[0]
+            if len(smplx) == 1:
+                self.vertices.add(smplx[0])
+            elif len(smplx) == 2:
+                u, v = smplx
+                self.adjacency[u].add(v)
+                self.adjacency[v].add(u)
+
+        labels = {}
+        current_label = 0
+
+        for v in self.vertices:
+            if v not in labels:
+                stack = [v]
+                while stack:
+                    node = stack.pop()
+                    if node not in labels:
+                        labels[node] = current_label
+                        stack.extend(self.adjacency[node])
+                current_label += 1
+        
+        label_list = [-1] * len(self.vertices)
+        for v in self.vertices:
+            label_list[v] = labels[v]
+
+        self.labels_= label_list
+        self.n_clusters_ = len(set(label_list))
+        return self
