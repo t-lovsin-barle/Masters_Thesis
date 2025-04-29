@@ -21,7 +21,7 @@ from gtda.utils.validation import validate_params
 
 # Carriere et al. (2018): https://jmlr.org/papers/v19/17-291.html
 
-class RipsClusering(ClusterMixin, BaseEstimator):
+class RipsClustering(ClusterMixin, BaseEstimator):
 
     # This clusterer is modeled after the FirstSimpleGap clusterer from the giotto-tda
     # library.
@@ -100,7 +100,7 @@ class RipsClusering(ClusterMixin, BaseEstimator):
         self.n_clusters_ = len(set(label_list))
         return self
 
-class AutoRipsClusering(ClusterMixin, BaseEstimator):
+class AutoRipsClustering(ClusterMixin, BaseEstimator):
     
     # Identical to RipsClustering apart from the adition of the bootstrap to compute the delta.
 

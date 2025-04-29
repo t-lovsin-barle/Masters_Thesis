@@ -1,13 +1,18 @@
 # Code to recreate results of Mapper applied to COIL data
 
+import sys
 import os
+ 
+# Add the project root to sys.path so 'automato' can be imported
+current_file = os.path.abspath(__file__)
+project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
+sys.path.insert(0, project_root)
 
 import gtda.mapper as mpr  # type: ignore
 from custom_cover import ResolutionCover
-from custom_clusterer import AutoRipsClusering
+from custom_clusterer import RipsClustering, AutoRipsClustering
 import numpy as np
 import pandas as pd  # type: ignore
-import math
 import sklearn
 
 from automato import Automato
@@ -44,19 +49,19 @@ for fname in os.listdir(image_dir):
 # Create DataFrame
 df = pd.DataFrame(data)
 X, y = df.values[:, :-1], df.values[:, -1]
-
+delta = average_delta(X)
 # Instantiate Mapper parameters
 overlap_frac = 0.4  # Specify fractional overlap (gain)
 V = empiric_mod_of_contin(
     func=sklearn.decomposition.PCA(n_components=1).fit(X).transform(X), 
-    delta=average_delta(X),
+    delta=delta,
     dist_mtrx= squareform(pdist(X, metric = 'euclidean'))
     )
 resolution = V[0] / overlap_frac
 
-clusterer = AutoRipsClusering()
+#clusterer = RipsClustering(max_edge_length=delta)
 #clusterer = Automato(random_state=42)
-#clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
+clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
 cover = ResolutionCover(
     resolution=resolution,
     gain=overlap_frac
@@ -93,6 +98,6 @@ fig.update_layout(
 if not os.path.exists("./mapper_applications/figures/"):
     os.mkdir("./mapper_applications/figures/")
 filename = (
-    "./mapper_applications/figures/Coil_dataset_Bruh.svg"
+    "./mapper_applications/figures/Coil_dataset_AutomatoRips.svg"
 )
 fig.write_image(filename)

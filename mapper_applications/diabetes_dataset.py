@@ -1,9 +1,15 @@
 # Code to recreate results of Mapper applied to diabetes data
+import sys
 import os
+ 
+# Add the project root to sys.path so 'automato' can be imported
+current_file = os.path.abspath(__file__)
+project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
+sys.path.insert(0, project_root)
 
 import gtda.mapper as mpr  # type: ignore
 from custom_cover import ResolutionCover
-from custom_clusterer import RipsClustering, AutoRipsClusering
+from custom_clusterer import RipsClustering, AutoRipsClustering
 import numpy as np
 import pandas as pd  # type: ignore
 from sklearn.preprocessing import StandardScaler  # type: ignore
@@ -25,16 +31,17 @@ y = np.where(y == "Overt_Diabetic", 2, y)
 # Instantiate Mapper parameters
 filter_func = EccentricitySubclassed(exponent=np.inf)  # Specify filter
 overlap_frac = 0.4  # Specify fractional overlap (gain)
+delta = average_delta(X)
 V = empiric_mod_of_contin(
     func=mpr.Eccentricity(exponent=np.inf).fit(X).transform(X), 
-    delta=average_delta(X),
+    delta=delta,
     dist_mtrx=squareform(pdist(X, metric = 'euclidean'))
     )
 resolution = V[0] / overlap_frac
-clusterer = AutoRipsClusering()
+#clusterer = RipsClustering(max_edge_length=delta)
 #clusterer= RipsClustering(max_edge_length=average_delta(X))
 #clusterer = Automato(random_state=42)
-#clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
+clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
 cover2 = ResolutionCover(
     resolution=resolution,
     gain=overlap_frac
@@ -73,6 +80,6 @@ fig.update_layout(
 if not os.path.exists("./mapper_applications/figures/"):
     os.mkdir("./mapper_applications/figures/")
 filename = (
-    "./mapper_applications/figures/diabetes_dataset_RipsGraphH.svg"
+    "./mapper_applications/figures/diabetes_dataset_AutomatoRips.svg"
 )
 fig.write_image(filename)
