@@ -40,8 +40,8 @@ V = empiric_mod_of_contin(
 resolution = V[0] / overlap_frac
 #clusterer = RipsClustering(max_edge_length=delta)
 #clusterer= RipsClustering(max_edge_length=average_delta(X))
-#clusterer = Automato(random_state=42)
-clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
+clusterer = Automato(random_state=42)
+#clusterer = Automato(tomato_params={'graph_type':'radius', 'r':delta}, random_state=42)
 cover2 = ResolutionCover(
     resolution=resolution,
     gain=overlap_frac
@@ -80,6 +80,6 @@ fig.update_layout(
 if not os.path.exists("./mapper_applications/figures/"):
     os.mkdir("./mapper_applications/figures/")
 filename = (
-    "./mapper_applications/figures/diabetes_dataset_AutomatoRips.svg"
+    "./mapper_applications/figures/diabetes_dataset_Automato.svg"
 )
 fig.write_image(filename)

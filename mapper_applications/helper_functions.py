@@ -21,17 +21,22 @@ def average_delta(X, n_iterations=100, beta=0.001):
             for k in range(len(indices)):
                 min_j = min(min_j, dist_matrix[j,k])
 
-        hausdorff_dist_from_data_to_sample = max(hausdorff_dist_from_data_to_sample, min_j)
+            hausdorff_dist_from_data_to_sample = max(hausdorff_dist_from_data_to_sample, min_j)
         delta = delta + hausdorff_dist_from_data_to_sample / n_iterations
     return delta
 
 # Computation of the V(delta)
 def empiric_mod_of_contin(func, delta, dist_mtrx, epsilon=0.001): 
     V = 0
+    k = 0
     for i in range(len(dist_mtrx)):
+        k_ = 0
         for j in range(len(dist_mtrx)):
             if dist_mtrx[i,j] <= delta:
+                k_ = k_ + 1
                 V_ = abs(func[i]-func[j])
                 if V <= V_:
                     V = V_
-    return V + epsilon
+        if k < k_:
+            k = k_
+    return V + epsilon, k

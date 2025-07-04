@@ -15,11 +15,12 @@ from sklearn.datasets import make_circles  # type: ignore
 
 from automato import Automato
 from dataset_utils import plotting
-
+from custom_clusterer import RipsClustering
+from helper_functions import average_delta
 
 
 # Create concentric circles
-X, y = make_circles(n_samples=2000, noise=0.05, factor=0.3, random_state=42)
+X, y = make_circles(n_samples=1000, noise=0.05, factor=0.3, random_state=42)
 fig = plotting.plot_point_cloud(
     X,
     labels=y,
@@ -43,9 +44,10 @@ if not os.path.exists("./mapper_applications/figures/"):
 filename = "./mapper_applications/figures/concentric_circles.svg"
 fig.write_image(filename)
 
+delta = average_delta(X)
 # Instantiate Mapper
 filter_func = mpr.Projection(columns=[0])  # Specify filter
-n_intervals = 15  # Specify numbers of intervals to use
+n_intervals = 41  # Specify numbers of intervals to use
 overlap_frac = 0.3  # Specify fractional overlap
 cover = mpr.CubicalCover(
     n_intervals=n_intervals,
@@ -55,13 +57,16 @@ n_jobs = -1
 clusterers = [
     Automato(random_state=42),
     DBSCAN(),
-    HDBSCAN()
+    HDBSCAN(),
+    RipsClustering(max_edge_length=delta)
+    
 ]
 # Clustering algorithms to be used in Mapper
 clusterer_names = [
     "automato",
     "dbscan",
-    "hdbscan"
+    "hdbscan",
+    "ripsclustering"
 ]
 for clusterer, clusterer_name in zip(clusterers, clusterer_names):
     pipe = mpr.make_mapper_pipeline(
