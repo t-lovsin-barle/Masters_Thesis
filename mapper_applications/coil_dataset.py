@@ -17,13 +17,13 @@ import sklearn
 
 from automato import Automato
 from scipy.spatial.distance import pdist, squareform
-from helper_functions import average_delta, empiric_mod_of_contin
+from helper_functions import compute_parameters, DTM_cuttoff
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 
-
+# Download: https://www.cs.columbia.edu/CAVE/software/softlib/coil-100.php
 # Path to the image folder
 image_dir = r'C:\Users\trist\Downloads\coil-100\coil-100'
 
@@ -38,7 +38,7 @@ for fname in os.listdir(image_dir):
         # Load image, convert to grayscale and scale pixel values to [0, 1]
         img = Image.open(img_path).convert('L')  # 'L' for grayscale
         img_array = np.array(img) / 255.0  # normalize to [0, 1]
-        img_flat = img_array.flatten()
+        img_flat = img_array.flatten(order='F')
         
         # Compute label
         label = 1 - abs(angle - 180) / 180
@@ -49,55 +49,70 @@ for fname in os.listdir(image_dir):
 # Create DataFrame
 df = pd.DataFrame(data)
 X, y = df.values[:, :-1], df.values[:, -1]
-delta = average_delta(X)
-# Instantiate Mapper parameters
-overlap_frac = 0.4  # Specify fractional overlap (gain)
-V,k = empiric_mod_of_contin(
-    func=sklearn.decomposition.PCA(n_components=1).fit(X).transform(X), 
-    delta=delta,
-    dist_mtrx= squareform(pdist(X, metric = 'euclidean'))
-    )
-resolution = V[0] / overlap_frac
 
-#clusterer = RipsClustering(max_edge_length=delta)
-#clusterer = Automato(random_state=42)
-clusterer = Automato(tomato_params={'k_DTM':k,'graph_type':'radius', 'r':delta}, random_state=42)
+filter_func = sklearn.decomposition.PCA(n_components=1)
+overlap_frac = 0.4
+
+delta, resolution, k = compute_parameters(X=X,
+                                          filter_func=filter_func.fit(X).transform(X),
+                                          gain=overlap_frac)
+print(f"Rips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k}")
+clusterers = [
+    Automato(random_state=42),
+    Automato(tomato_params={'k_DTM':k,
+                            'graph_type':'radius', 
+                            'r':delta}, 
+            random_state=42),
+    RipsClustering(max_edge_length=delta)
+]
+clusterer_names= [
+    "automato",
+    "tuned_auto",
+    "rips_clusers"
+]
 cover = ResolutionCover(
-    resolution=resolution,
-    gain=overlap_frac
-)
-n_jobs = 1
-pipe_custom = mpr.make_mapper_pipeline(
-    filter_func=sklearn.decomposition.PCA(n_components=1),
-    cover=cover,
-    clusterer=clusterer,
-    verbose=False,
-    n_jobs=n_jobs, 
-    min_intersection=1
+        resolution=resolution,
+        gain=overlap_frac
     )
-# Create Mapper graph
-mapper_graph = pipe_custom.fit(X)
+for clusterer, clusterer_name in zip(clusterers, clusterer_names):
+    
+    n_jobs = 1
 
-# Create Mapper figure
-plotly_params = {"node_trace": {"marker_colorscale": "jet"}}
-fig = mpr.plot_static_mapper_graph(
-    pipe_custom,
-    X,
-    color_data=y,
-    layout_dim=2,
-    plotly_params=plotly_params,
-    layout="fruchterman_reingold",
-    node_scale=60
-)
-fig.update_layout(
-    autosize=False,
-    width=400,
-    height=400,
-)
-# Save Mapper figure to disk
-if not os.path.exists("./mapper_applications/figures/"):
-    os.mkdir("./mapper_applications/figures/")
-filename = (
-    "./mapper_applications/figures/Coil_dataset_AutomatoRipsK.svg"
-)
-fig.write_image(filename)
+    # Create Mapper pipeline
+    pipe_custom = mpr.make_mapper_pipeline(
+        filter_func=filter_func,
+        cover=cover,
+        clusterer=clusterer,
+        verbose=False,
+        n_jobs=n_jobs, 
+        min_intersection=1
+        )
+    # Create Mapper graph
+    mapper_graph = pipe_custom.fit(X)
+
+    # Create Mapper figure
+    plotly_params = {"node_trace": {"marker_colorscale": "jet"}}
+    fig = mpr.plot_static_mapper_graph(
+        pipe_custom,
+        X,
+        color_data=y,
+        layout_dim=2,
+        plotly_params=plotly_params,
+        layout="fruchterman_reingold",
+        node_scale=60
+    )
+    fig.update_layout(
+        autosize=False,
+        width=400,
+        height=400,
+    )
+    # Save Mapper figure to disk
+    if not os.path.exists("./mapper_applications/figures_new/"):
+        os.mkdir("./mapper_applications/figures_new/")
+    filename = (
+        "./mapper_applications/figures_new/COIL_"
+        + f"{clusterer_name}_{overlap_frac}"
+        + "_gain.svg"
+    )
+    fig.write_image(filename)
+

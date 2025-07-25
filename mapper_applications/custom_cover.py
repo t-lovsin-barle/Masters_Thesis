@@ -202,10 +202,10 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
         left = min_val
         counter = 1
         while left + resolution <= max_val and max_val + gain * resolution - (left + resolution) >= resolution:
-            left += step
-            counter += 1
-        left += step
-        counter += 1
+            left = left +step
+            counter = counter + 1
+        left = left + step
+        counter = counter + 1
         left_limits = np.linspace(min_val, left, num=counter, endpoint=True)
         right_limits = left_limits + resolution
         return left_limits, right_limits
