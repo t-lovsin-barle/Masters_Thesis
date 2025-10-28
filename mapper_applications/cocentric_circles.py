@@ -11,14 +11,17 @@ sys.path.insert(0, project_root)
 import gtda.mapper as mpr  # type: ignore
 from custom_cover import ResolutionCover
 from custom_clusterer import RipsClustering
+import numpy as np
+import sklearn
 
 from automato import Automato
 from helper_functions import compute_parameters, DTM_cuttoff
 from sklearn.datasets import make_circles
+
 from dataset_utils import plotting
 
 
-noise_levels = [0.00, 0.02, 0.04, 0.08, 0.08, 0.1]
+noise_levels = [0.00, 0.02, 0.04, 0.06, 0.08, 0.10]
 
 if not os.path.exists("./mapper_applications/figures_circles"):
     os.mkdir("./mapper_applications/figures_circles")
@@ -68,12 +71,13 @@ for noise in noise_levels:
             delta, resolution, k = compute_parameters(X=X,
                                                 filter_func=filter_func.fit(X).transform(X).flatten(),
                                                 gain=overlap_frac)
-            print(f"Battery: {battery} \nSet: {set} \nFilter: {filter_name} \nGain: {overlap_frac} \nRips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k}")
+            print(f"Noise: {noise} \nFilter: {filter_name} \nGain: {overlap_frac} \nRips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k}")
             clusterers = [
                 Automato(random_state=42),
                 Automato(tomato_params={'k_DTM':k,
                                         'graph_type':'radius', 
-                                        'r':delta}, 
+                                        'r':delta,
+                                        'q':2}, 
                         random_state=42),
                 RipsClustering(max_edge_length=delta)
             ]

@@ -17,7 +17,7 @@ import sklearn
 
 from automato import Automato
 from scipy.spatial.distance import pdist, squareform
-from helper_functions import compute_parameters, DTM_cuttoff
+from helper_functions import compute_parameters
 
 import numpy as np
 import pandas as pd
@@ -50,69 +50,80 @@ for fname in os.listdir(image_dir):
 df = pd.DataFrame(data)
 X, y = df.values[:, :-1], df.values[:, -1]
 
-filter_func = sklearn.decomposition.PCA(n_components=1)
-overlap_frac = 0.4
+if not os.path.exists("./mapper_applications/figures_COIL_epsilon=0"):
+    os.mkdir("./mapper_applications/figures_COIL_epsilon=0")
+        
 
-delta, resolution, k = compute_parameters(X=X,
-                                          filter_func=filter_func.fit(X).transform(X),
-                                          gain=overlap_frac)
-print(f"Rips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k}")
-clusterers = [
-    Automato(random_state=42),
-    Automato(tomato_params={'k_DTM':k,
-                            'graph_type':'radius', 
-                            'r':delta}, 
-            random_state=42),
-    RipsClustering(max_edge_length=delta)
+overlap_fracs = [0.35, 0.4, 0.45, 0.49]
+filters = [
+        sklearn.decomposition.PCA(n_components=1)
 ]
-clusterer_names= [
-    "automato",
-    "tuned_auto",
-    "rips_clusers"
+filter_names = [
+        "PCA"
 ]
-cover = ResolutionCover(
-        resolution=resolution,
-        gain=overlap_frac
-    )
-for clusterer, clusterer_name in zip(clusterers, clusterer_names):
-    
-    n_jobs = 1
 
-    # Create Mapper pipeline
-    pipe_custom = mpr.make_mapper_pipeline(
-        filter_func=filter_func,
-        cover=cover,
-        clusterer=clusterer,
-        verbose=False,
-        n_jobs=n_jobs, 
-        min_intersection=1
-        )
-    # Create Mapper graph
-    mapper_graph = pipe_custom.fit(X)
+for overlap_frac in overlap_fracs:
+    for filter_func , filter_name in zip(filters, filter_names):
+        
+        delta, resolution, k = compute_parameters(X=X,
+                                            filter_func=filter_func.fit(X).transform(X).flatten(),
+                                            gain=overlap_frac,
+                                            epsilon=0)
+        print(f"Filter: {filter_name} \nGain: {overlap_frac} \nRips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k}")
+        clusterers = [
+            Automato(random_state=42),
+            Automato(tomato_params={'k_DTM':k,
+                                    'graph_type':'radius', 
+                                    'r':delta,
+                                    'q':2}, 
+                    random_state=42),
+            RipsClustering(max_edge_length=delta)
+        ]
+        clusterer_names= [
+            "automato",
+            "tuned_auto",
+            "rips_clusers"
+        ]
+        cover = ResolutionCover(
+                resolution=resolution,
+                gain=overlap_frac
+            )
+        for clusterer, clusterer_name in zip(clusterers, clusterer_names):
+        
+            n_jobs = 1
 
-    # Create Mapper figure
-    plotly_params = {"node_trace": {"marker_colorscale": "jet"}}
-    fig = mpr.plot_static_mapper_graph(
-        pipe_custom,
-        X,
-        color_data=y,
-        layout_dim=2,
-        plotly_params=plotly_params,
-        layout="fruchterman_reingold",
-        node_scale=60
-    )
-    fig.update_layout(
-        autosize=False,
-        width=400,
-        height=400,
-    )
-    # Save Mapper figure to disk
-    if not os.path.exists("./mapper_applications/figures_new/"):
-        os.mkdir("./mapper_applications/figures_new/")
-    filename = (
-        "./mapper_applications/figures_new/COIL_"
-        + f"{clusterer_name}_{overlap_frac}"
-        + "_gain.svg"
-    )
-    fig.write_image(filename)
+            # Create Mapper pipeline
+            pipe_custom = mpr.make_mapper_pipeline(
+                filter_func=filter_func,
+                cover=cover,
+                clusterer=clusterer,
+                verbose=False,
+                n_jobs=n_jobs, 
+                min_intersection=1
+                )
+            # Create Mapper graph
+            mapper_graph = pipe_custom.fit(X)
+
+            # Create Mapper figure
+            plotly_params = {"node_trace": {"marker_colorscale": "Viridis"}}
+            fig = mpr.plot_static_mapper_graph(
+                pipe_custom,
+                X,
+                color_data=y,
+                layout_dim=2,
+                plotly_params=plotly_params,
+                layout="fruchterman_reingold",
+                node_scale=10
+                )
+            fig.update_layout(
+                autosize=False,
+                width=400,
+                height=400,
+                )
+            # Save Mapper figure to disk
+            filename = (
+                "./mapper_applications/figures_COIL_epsilon=0/COIL_"
+                + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            )
+            fig.write_image(filename)
 

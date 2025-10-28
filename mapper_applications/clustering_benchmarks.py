@@ -102,7 +102,8 @@ for battery in battery_names:
                     Automato(random_state=42),
                     Automato(tomato_params={'k_DTM':k,
                                             'graph_type':'radius', 
-                                            'r':delta}, 
+                                            'r':delta,
+                                            'q':2}, 
                             random_state=42),
                     RipsClustering(max_edge_length=delta)
                 ]

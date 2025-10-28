@@ -22,12 +22,12 @@ def average_delta(X, dist_matrix=None, n_iterations=100, beta=0.001, magic = 10)
         dist_matrix = cdist(X,X)
     for i in range(n_iterations):
         indices = np.random.choice(len(X), size=s_n, replace=False)
-        sampeled_dist_matrix=dist_matrix[:,indices]
+        sampled_dist_matrix=dist_matrix[:,indices]
         hausdorff_dist_from_data_to_sample = 0
 
         min_j = 0
         for j in range(len(X)):
-            min_j = min(sampeled_dist_matrix[j,:])
+            min_j = min(sampled_dist_matrix[j,:])
 
             hausdorff_dist_from_data_to_sample = max(hausdorff_dist_from_data_to_sample, min_j)
         delta = delta + hausdorff_dist_from_data_to_sample / n_iterations
