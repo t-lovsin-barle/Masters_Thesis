@@ -41,78 +41,69 @@ filter_names = [
         "Eccentricity"
 ]
 
-# Not in the scope of the Masters Thesis
-alphas = [0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]
 
-# Varying overlap fractions
 for overlap_frac in overlap_fracs:
+    for filter_func , filter_name in zip(filters, filter_names):
+        
+        delta, resolution, k = compute_parameters(X=X,
+                                            filter_func=filter_func.fit(X).transform(X),
+                                            gain=overlap_frac,
+                                            epsilon=0)
+        print(f"Filter: {filter_name} \nGain: {overlap_frac} \nRips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k}")
+        clusterers = [
+            Automato(random_state=42),
+            Automato(tomato_params={'k_DTM':k,
+                                    'graph_type':'radius', 
+                                    'r':delta,
+                                    'q':2}, 
+                    random_state=42),
+            RipsClustering(max_edge_length=delta)
+        ]
+        clusterer_names= [
+            "automato",
+            "tuned_auto",
+            "rips_clusers"
+        ]
+        cover = ResolutionCover(
+                resolution=resolution,
+                gain=overlap_frac
+            )
+        for clusterer, clusterer_name in zip(clusterers, clusterer_names):
+        
+            n_jobs = 1
 
-    # Varying alpha in the bottleneck bootstrap
-    for alpha in alphas:
-
-        # Iterating through filters
-        for filter_func , filter_name in zip(filters, filter_names):
-            
-            delta, resolution, k = compute_parameters(X=X,
-                                                filter_func=filter_func.fit(X).transform(X),
-                                                gain=overlap_frac,
-                                                epsilon=0)
-            print(f"Filter: {filter_name} \nGain: {overlap_frac} \nRips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k} \nAlpha: {alpha}")
-            clusterers = [
-                Automato(random_state=42, alpha=alpha),
-                Automato(tomato_params={'k_DTM':k,
-                                        'graph_type':'radius', 
-                                        'r':delta,
-                                        'q':2}, 
-                        random_state=42,
-                        alpha = alpha),
-                RipsClustering(max_edge_length=delta)
-            ]
-            clusterer_names= [
-                "automato",
-                "tuned_auto",
-                "rips_clusers"
-            ]
-            cover = ResolutionCover(
-                    resolution=resolution,
-                    gain=overlap_frac
+            # Create Mapper pipeline
+            pipe_custom = mpr.make_mapper_pipeline(
+                filter_func=filter_func,
+                cover=cover,
+                clusterer=clusterer,
+                verbose=False,
+                n_jobs=n_jobs, 
+                min_intersection=1
                 )
-            for clusterer, clusterer_name in zip(clusterers, clusterer_names):
-            
-                n_jobs = 1
+            # Create Mapper graph
+            mapper_graph = pipe_custom.fit(X)
 
-                # Create Mapper pipeline
-                pipe_custom = mpr.make_mapper_pipeline(
-                    filter_func=filter_func,
-                    cover=cover,
-                    clusterer=clusterer,
-                    verbose=False,
-                    n_jobs=n_jobs, 
-                    min_intersection=1
-                    )
-                # Create Mapper graph
-                mapper_graph = pipe_custom.fit(X)
-
-                # Create Mapper figure
-                plotly_params = {"node_trace": {"marker_colorscale": "Viridis"}}
-                fig = mpr.plot_static_mapper_graph(
-                    pipe_custom,
-                    X,
-                    color_data=y,
-                    layout_dim=2,
-                    plotly_params=plotly_params,
-                    layout="fruchterman_reingold",
-                    node_scale=10
-                    )
-                fig.update_layout(
-                    autosize=False,
-                    width=400,
-                    height=400,
-                    )
-                # Save Mapper figure to disk
-                filename = (
-                    "./mapper_applications/figures_Diabetes_epsilon=0/Diabetes_"
-                    + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            # Create Mapper figure
+            plotly_params = {"node_trace": {"marker_colorscale": "Viridis"}}
+            fig = mpr.plot_static_mapper_graph(
+                pipe_custom,
+                X,
+                color_data=y,
+                layout_dim=2,
+                plotly_params=plotly_params,
+                layout="fruchterman_reingold",
+                node_scale=10
                 )
-                fig.write_image(filename)
+            fig.update_layout(
+                autosize=False,
+                width=400,
+                height=400,
+                )
+            # Save Mapper figure to disk
+            filename = (
+                "./mapper_applications/figures_Diabetes_epsilon=0/Diabetes_"
+                + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            )
+            fig.write_image(filename)
 
