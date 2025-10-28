@@ -1,3 +1,7 @@
+'''Code to generate Mappers using the Raven-Miller data set with 
+varying parameters for the cover and Automato algorithm. The 'control group'
+are the Mappers using RipsClustering as the clustering algorithm'''
+
 # Code to import automato
 import sys
 import os
@@ -57,7 +61,7 @@ for overlap_frac in overlap_fracs:
                                                 filter_func=filter_func.fit(X).transform(X),
                                                 gain=overlap_frac,
                                                 epsilon=0)
-            print(f"Filter: {filter_name} \nGain: {overlap_frac} \nRips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k} \nAlpha: {alpha}")
+            print(f"Filter: {filter_name} \nGain: {overlap_frac} \nRips parameter: {delta}\nResolution: {resolution}\nDTM parameter: {k}\nAlpha: {alpha}")
             clusterers = [
                 Automato(random_state=42, alpha=alpha),
                 Automato(tomato_params={'k_DTM':k,
@@ -65,7 +69,7 @@ for overlap_frac in overlap_fracs:
                                         'r':delta,
                                         'q':2}, 
                         random_state=42,
-                        alpha = alpha),
+                        alpha=alpha),
                 RipsClustering(max_edge_length=delta)
             ]
             clusterer_names= [
@@ -112,7 +116,7 @@ for overlap_frac in overlap_fracs:
                 # Save Mapper figure to disk
                 filename = (
                     "./mapper_applications/figures_Diabetes_epsilon=0/Diabetes_"
-                    + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+                    + f"{filter_name}_{clusterer_name}_{overlap_frac}_{alpha}.svg"
                 )
                 fig.write_image(filename)
 
