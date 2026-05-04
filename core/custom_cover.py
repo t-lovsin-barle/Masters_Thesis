@@ -12,46 +12,46 @@ from gtda.mapper.utils._cover import _check_has_one_column, \
     _remove_empty_and_duplicate_intervals
 from gtda.utils.validation import validate_params
 
-# The classes OneDimResolutonCover and ResolutionCover are based on the giotto-tda
-# classes OneDimensionalCover and CubicalCover respectively. The main difference is 
-# that in the Resolution covers you controll the interval length instead of the number
-# of intervals in order to incorperate the results from Carriere et al. (2018):
-# https://jmlr.org/papers/v19/17-291.html
+''' The classes OneDimResolutonCover and ResolutionCover are based on the giotto-tda
+ classes OneDimensionalCover and CubicalCover respectively. The main difference is 
+ that in the Resolution covers you controll the interval length instead of the number
+ of intervals in order to incorperate the results from Carriere et al. (2018):
+ https://jmlr.org/papers/v19/17-291.html '''
 
 
 #@adapt_fit_transform_docs
 class OneDimResolutionCover(BaseEstimator, TransformerMixin):
 
-    # This is the analogue of OneDimensionalCover from the giotto-tda package. 
-    # The original C++ implementation of this cover can be found here:
-    # https://gudhi.inria.fr/doc/latest/_g_i_c_8h_source.html
+    ''' This is the analogue of OneDimensionalCover from the giotto-tda package. 
+     The original C++ implementation of this cover can be found here:
+     https://gudhi.inria.fr/doc/latest/_g_i_c_8h_source.html
 
-    # The construction works as follows: Starting at min_f we create intervals of
-    # length = resolution and overlap = gain * resolution. The last interval is then
-    # cut off at max_f.
+     The construction works as follows: Starting at min_f we create intervals of
+     length = resolution and overlap = gain * resolution. The last interval is then
+     cut off at max_f.
 
-    # This differs from OneDimentionalCover in a meaningful way. Since 
-    # OneDimentionalCover distributes the intervals uniformly you cannot guarantee 
-    # that the intervals will have length = resolution. This will only be the case if 
-    # max_f - min_f is a multiple of the resolution which is rarely the case.
-    # It is also not viable to round up or down since that will also impact the 
-    # interval length.
+     This differs from OneDimentionalCover in a meaningful way. Since 
+     OneDimentionalCover distributes the intervals uniformly you cannot guarantee 
+     that the intervals will have length = resolution. This will only be the case if 
+     max_f - min_f is a multiple of the resolution which is rarely the case.
+     It is also not viable to round up or down since that will also impact the 
+     interval length.
 
-    # There exists a second covering mehtod in OneDimentionalCover which also seems 
-    # like it is not possible to controll the length of intervals.
+     There exists a second covering mehtod in OneDimentionalCover which also seems 
+     like it is not possible to controll the length of intervals.
 
-    # Parameters
-    # ----------
+     Parameters
+     ----------
 
-    # gain: A float in (0,1). According to he aforementioned paper we only have 
-    # statistical guarantees if gain is set between 1/3 and 1/2.
+     gain: A float in (0,1). According to he aforementioned paper we only have 
+     statistical guarantees if gain is set between 1/3 and 1/2.
 
-    # resolution: A float that is equal to V(delta) / gain, where
-    # V(delta) = max{ |f(x)-f(x')| : x,x' data points with d(x,x') <= delta} which 
-    # mimics the mode of continuity of the filter function. Delta is defined as 
-    # the Hausdorff distance between a random subsample of the data and the data.
+     resolution: A float that is equal to V(delta) / gain, where
+     V(delta) = max{ |f(x)-f(x')| : x,x' data points with d(x,x') <= delta} which 
+     mimics the mode of continuity of the filter function. Delta is defined as 
+     the Hausdorff distance between a random subsample of the data and the data.
 
-    # All definitions are based on equation (8) in Carriere et al. (2018)
+     All definitions are based on equation (8) in Carriere et al. (2018)'''
 
     _hyperparameters = {
         'resolution': {'type': float},
@@ -65,7 +65,7 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
 
     def _fit_mock(self, X):
         
-        # OneDimensionalCover has two types of covers. Even thoughOneDimResolutionCover 
+        # OneDimensionalCover has two types of covers. Even though OneDimResolutionCover 
         # only has one it was simpler for me to mimic the (working) structure of 
         # OneDimentionalCover instead of trying to reinvent the wheel too much, even if
         # this structure might be redundant.
@@ -213,25 +213,25 @@ class OneDimResolutionCover(BaseEstimator, TransformerMixin):
 #@adapt_fit_transform_docs
 class ResolutionCover(BaseEstimator, TransformerMixin):
 
-    # Analogosly to CubicalCover, ResolutionCover fits OneDimResolutionCover to 
-    # each column of the input array, according to the same parameters passed 
-    # to the constructor. All differences are of the same vein as the differences 
-    # in OneDimResolutionCover.
+    ''' Analogosly to CubicalCover, ResolutionCover fits OneDimResolutionCover to 
+     each column of the input array, according to the same parameters passed 
+     to the constructor. All differences are of the same vein as the differences 
+     in OneDimResolutionCover.
 
-    # Further explanation can be found in the comments in OneDimResolutionCover.
+     Further explanation can be found in the comments in OneDimResolutionCover.
 
-    # Parameters
-    # ----------
+     Parameters
+     ----------
 
-    # gain: A float in (0,1). According to he aforementioned paper we only have 
-    #   statistical guarantees if gain is set between 1/3 and 1/2.
+     gain: A float in (0,1). According to he aforementioned paper we only have 
+       statistical guarantees if gain is set between 1/3 and 1/2.
 
-    # resolution: A float that is equal to V(delta) / gain, where
-    #   V(delta) = max{ |f(x)-f(x')| : x,x' data points with d(x,x') <= delta} which 
-    #   mimics the mode of continuity of the filter function. Delta is defined as 
-    #   the Hausdorff distance between a random subsample of the data and the data.
+     resolution: A float that is equal to V(delta) / gain, where
+       V(delta) = max{ |f(x)-f(x')| : x,x' data points with d(x,x') <= delta} which 
+       mimics the mode of continuity of the filter function. Delta is defined as 
+       the Hausdorff distance between a random subsample of the data and the data.
 
-    # All definitions are based on equation (8) in Carriere et al. (2018)
+     All definitions are based on equation (8) in Carriere et al. (2018)'''
 
     _hyperparameters = {
         'resolution': {'type': float},
