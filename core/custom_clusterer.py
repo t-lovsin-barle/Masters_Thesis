@@ -11,33 +11,33 @@ from sklearn.utils import check_array
 
 from gtda.utils.validation import validate_params
 
-# Since the goal is to reproduce the results from Carriere et al. (2018) we need to
-# cluster the same way they did. First they build a Rips Graph on the data points and
-# then take the connected components as clusters when looking at the preimages. What 
-# RipsClustering does is something similar, which should yield the same result. Given a 
-# pre-image the RipsClustering then constructs a Rips graph on top of it instead of first
-# creating the Rips graph and then cutting it. This should not be neaningfully different
-# since the same threshold is used in both cases.
+''' Since the goal is to reproduce the results from Carriere et al. (2018) we need to
+ cluster the same way they did. First they build a Rips Graph on the data points and
+ then take the connected components as clusters when looking at the preimages. What 
+ RipsClustering does is something similar, which should yield the same result. Given a 
+ pre-image the RipsClustering then constructs a Rips graph on top of it instead of first
+ creating the Rips graph and then cutting it. This should not be neaningfully different
+ since the same threshold is used in both cases.
 
-# Carriere et al. (2018): https://jmlr.org/papers/v19/17-291.html
+ Carriere et al. (2018): https://jmlr.org/papers/v19/17-291.html '''
 
 class RipsClustering(ClusterMixin, BaseEstimator):
 
-    # This clusterer is modeled after the FirstSimpleGap clusterer from the giotto-tda
-    # library.
+    ''' This clusterer is modeled after the FirstSimpleGap clusterer from the giotto-tda
+     library.
 
-    # This clusterer roughly works as follows. First it creates a Rips complex using the 
-    # Gudhi library, limiting it to dimention 1. From the Rips complex it creates a graph
-    # like structure, such that DFS can be used to find spaning trees, labeling the vertices
-    # that belong to the along the way. It then outputs a list of lables, each corresponding
-    # to a data point in 'X' to be used in the mapper pipeline.
+     This clusterer roughly works as follows. First it creates a Rips complex using the 
+     Gudhi library, limiting it to dimention 1. From the Rips complex it creates a graph
+     like structure, such that DFS can be used to find spaning trees, labeling the vertices
+     that belong to the along the way. It then outputs a list of lables, each corresponding
+     to a data point in 'X' to be used in the mapper pipeline.
 
-    # Parameters
-    # -----------
+     Parameters
+     -----------
 
-    # max_edge_length: The threshold for the Rips Complex. It is computed by by taking 100 random
-    #   samples of the data and then calculating the Hausdorff distance from the data to the samples
-    #   and then averageing it. The sample size is given in Proposiiton 13 in Carriere et al. (2018).
+     max_edge_length: The threshold for the Rips Complex. It is computed by by taking 100 random
+       samples of the data and then calculating the Hausdorff distance from the data to the samples
+       and then averageing it. The sample size is given in Proposiiton 13 in Carriere et al. (2018). '''
 
     _hyperparameters = {'max_edge_length': {'type': float}}
 
@@ -102,16 +102,16 @@ class RipsClustering(ClusterMixin, BaseEstimator):
 
 class AutoRipsClustering(ClusterMixin, BaseEstimator):
     
-    # Identical to RipsClustering apart from the adition of the bootstrap to compute the delta.
+    ''' Identical to RipsClustering apart from the adition of the bootstrap to compute the delta.
 
-    # Parameters
-    # ----------
+     Parameters
+     ----------
 
-    # beta: Sample constant used in Proposition 13 in Carriere et al. (2018). By default set to
-    #   0.001 as stated in section 5 of the paper.
+     beta: Sample constant used in Proposition 13 in Carriere et al. (2018). By default set to
+       0.001 as stated in section 5 of the paper.
 
-    # n_iterations: Number of random samples to be taken. By default set to 100 as stated in section
-    #   5 of Carriere et al. (2018).
+     n_iterations: Number of random samples to be taken. By default set to 100 as stated in section
+       5 of Carriere et al. (2018).'''
 
     _hyperparameters = {'beta': {'type': float},
                         'n_iterations':{'type': int}
@@ -200,7 +200,7 @@ class AutoRipsClustering(ClusterMixin, BaseEstimator):
         self.n_clusters_ = len(set(label_list))
         return self
 
-# The following functions along wiht the class ParallelClustering were left as is.
+''' The following functions along wiht the class ParallelClustering were left as is.'''
 
 def _sample_weight_computer(rel_indices, sample_weight):
     return {"sample_weight": sample_weight[rel_indices]}
