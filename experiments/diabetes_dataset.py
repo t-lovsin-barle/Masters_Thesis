@@ -18,7 +18,7 @@ sys.path.insert(0, str(project_root))
 # Custom objects import
 from core.custom_cover import ResolutionCover
 from core.custom_clusterer import RipsClustering
-from core.helper_functions import compute_parameters,
+from core.helper_functions import compute_parameters
 from external.automato.automato import Automato
 
 # Path definitions
