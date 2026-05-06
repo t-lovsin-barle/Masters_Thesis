@@ -19,7 +19,8 @@ from core.custom_clusterer import RipsClustering
 from core.helper_functions import compute_parameters
 from external.automato.automato import Automato
 
-DATA_PATH = project_root / "external" / "clustering_benchmarks"
+DATA_PATH = project_root # add the root.
+#/ "external" / "clustering_benchmarks"
 BASE_FIG_DIR = project_root / "figures" / "Clustering_Benchmarks"
 
 battery_names = ["wut", "sipu", "fcps", "other"]
@@ -52,7 +53,7 @@ for battery in battery_names:
         current_fig_dir = BASE_FIG_DIR / f"figures_{battery}" / set
         current_fig_dir.mkdir(parents=True, exist_ok=True)
         
-        data_set = clustbench.load_dataset(battery,set,path=str(data_path))
+        data_set = clustbench.load_dataset(battery,set,path=str(DATA_PATH))
         X = data_set.data
         y = data_set.labels[0]
 
