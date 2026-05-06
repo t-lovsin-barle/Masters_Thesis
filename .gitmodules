@@ -1,0 +1,3 @@
+[submodule "external/clustering_benchmarks"]
+	path = external/clustering_benchmarks
+	url = https://github.com/gagolews/clustering-data-v1
