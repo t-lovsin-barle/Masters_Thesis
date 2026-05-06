@@ -7,10 +7,6 @@ import pandas as pd
 import gtda.mapper as mpr  
 from sklearn.preprocessing import StandardScaler  
 
-'''current_file = os.path.abspath(__file__)
-project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
-sys.path.insert(0, project_root)'''
-
 script_path = Path(__file__).resolve()
 project_root = script_path.parents[1]  
 sys.path.insert(0, str(project_root))
@@ -23,7 +19,7 @@ from external.automato.automato import Automato
 
 # Path definitions
 DATA_DIR = project_root / "data"
-FIG_DIR = project_root / "figures" / "figures_Diabetes_epsilon=0"
+FIG_DIR = project_root / "figures" / "Diabetes" / "epsilon=0"
 # Create figures folder if it doesn't exist
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -34,10 +30,6 @@ X = StandardScaler().fit_transform(X)
 y = np.where(y == "Normal", 0, y)
 y = np.where(y == "Chemical_Diabetic", 1, y)
 y = np.where(y == "Overt_Diabetic", 1, y)
-
-'''# Create folder
-if not os.path.exists("./figures/figures_Diabetes_epsilon=0"):
-    os.mkdir("./figures/figures_Diabetes_epsilon=0")'''
         
 # Innitiate different overlaps and filters. Filters need to have .fit() and .transform() functions
 overlap_fracs = [0.35, 0.4, 0.45, 0.49]
@@ -107,9 +99,6 @@ for overlap_frac in overlap_fracs:
                 height=400,
                 )
             # Save Mapper figure to disk
-            filename = (
-                "./figures/figures_Diabetes_epsilon=0/Diabetes_"
-                + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
-            )
-            fig.write_image(filename)
+            filename = FIG_DIR / f"Diabetes_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            fig.write_image(str(filename))
 

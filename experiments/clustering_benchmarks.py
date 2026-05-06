@@ -1,31 +1,26 @@
-import clustbench
-
-import sys
 import os
-
-import sklearn.decomposition
- 
-# Add the project root to sys.path so 'automato' can be imported
-current_file = os.path.abspath(__file__)
-project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
-sys.path.insert(0, project_root)
-data_path = r"C:\Users\trist\Downloads\clustering-data-v1-1.1.0\clustering-data-v1-1.1.0"
-import gtda.mapper as mpr  # type: ignore
-from custom_cover import ResolutionCover
-from custom_clusterer import RipsClustering, AutoRipsClustering
-import numpy as np
-import pandas as pd  # type: ignore
-import sklearn
-import math
-from dataset_utils import plotting
-from scipy.spatial.distance import cdist
-
-from automato import Automato
-
-from helper_functions import DTM_cuttoff, compute_parameters
-
+import sys
+from pathlib import Path
 import numpy as np
 import pandas as pd
+import sklearn
+import gtda.mapper as mpr
+import clustbench
+from dataset_utils import plotting
+# from scipy.spatial.distance import cdist
+
+script_path = Path(__file__).resolve()
+project_root = script_path.parents[1]
+sys.path.insert(0, str(project_root))
+
+# Custom objects import
+from core.custom_cover import ResolutionCover
+from core.custom_clusterer import RipsClustering
+from core.helper_functions import compute_parameters
+from external.automato.automato import Automato
+
+DATA_PATH = project_root / "external" / "clustering_benchmarks"
+BASE_FIG_DIR = project_root / "figures" / "Clustering_Benchmarks"
 
 battery_names = ["wut", "sipu", "fcps", "other"]
 
@@ -36,26 +31,32 @@ battery_sets = {
     "other": ["iris", "square"]
 }
 
-'''
-https://archive.ics.uci.edu/dataset/39/ecoli
-https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic
-https://archive.ics.uci.edu/dataset/109/wine
-'''
-uci_sets = ["ecoli", "wdbc", "wine"]
 
-
-
+overlap_fracs = [0.35, 0.4, 0.45, 0.49]
+filters = [
+     mpr.Projection(columns=1),
+     mpr.Eccentricity(exponent=np.inf),
+     sklearn.decomposition.PCA(n_components=1)
+]
+filter_names = [
+     "ProjectionY",
+     "Eccentricity",
+     "PCA"
+]
+n_jobs = 1
 
 
 for battery in battery_names:
-    if not os.path.exists("./mapper_applications/figures_" + f"{battery}"):
-            os.mkdir("./mapper_applications/figures_" + f"{battery}")
     for set in battery_sets[battery]:
-        if not os.path.exists("./mapper_applications/figures_" + f"{battery}/{set}"):
-            os.mkdir("./mapper_applications/figures_" + f"{battery}/{set}")
-        data_set = clustbench.load_dataset(battery,set,path=data_path)
+        
+        current_fig_dir = BASE_FIG_DIR / f"figures_{battery}" / set
+        current_fig_dir.mkdir(parents=True, exist_ok=True)
+        
+        data_set = clustbench.load_dataset(battery,set,path=str(data_path))
         X = data_set.data
         y = data_set.labels[0]
+
+        # Plot original point cloud if 2D
         if X.shape[1] == 2:
             fig = plotting.plot_point_cloud(
                 X,
@@ -76,21 +77,9 @@ for battery in battery_names:
                 height=400,
             )
             
-            filename = ("./mapper_applications/figures_" + f"{battery}/{set}/{set}.svg")
-            fig.write_image(filename)
+            fig_pc.write_image(str(current_fig_dir / f"{dataset_name}.svg"))
         
         
-        overlap_fracs = [0.35, 0.4, 0.45, 0.49]
-        filters = [
-             mpr.Projection(columns=1),
-             mpr.Eccentricity(exponent=np.inf),
-             sklearn.decomposition.PCA(n_components=1)
-        ]
-        filter_names = [
-             "ProjectionY",
-             "Eccentricity",
-             "PCA"
-        ]
         
         for overlap_frac in overlap_fracs:
             for filter_func , filter_name in zip(filters, filter_names):
@@ -118,7 +107,6 @@ for battery in battery_names:
                     )
                 for clusterer, clusterer_name in zip(clusterers, clusterer_names):
                 
-                    n_jobs = 1
 
                     # Create Mapper pipeline
                     pipe_custom = mpr.make_mapper_pipeline(
@@ -149,8 +137,5 @@ for battery in battery_names:
                         height=400,
                     )
 
-                    filename = (
-                        "./mapper_applications/figures_" 
-                        + f"{battery}/{set}/{set}_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
-                    )
-                    fig.write_image(filename)
+                    img_name = f"{dataset_name}_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+                    fig.write_image(str(current_fig_dir / img_name))

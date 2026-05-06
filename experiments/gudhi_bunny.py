@@ -1,25 +1,26 @@
-# Code to recreate results of Mapper applied to COIL data
-
 import sys
 import os
- 
-# Add the project root to sys.path so 'automato' can be imported
-current_file = os.path.abspath(__file__)
-project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
-sys.path.insert(0, project_root)
-
-import gtda.mapper as mpr  # type: ignore
+import gtda.mapper as mpr 
 import math
-from custom_cover import ResolutionCover
-from custom_clusterer import RipsClustering
 import sklearn
 import numpy as np
 from scipy.spatial.distance import cdist
-from automato import Automato
-from helper_functions import average_delta, empiric_mod_of_contin, optimal_resolution
-
 import gudhi.datasets.remote
 from sklearn.metrics import pairwise_distances
+
+script_path = Path(__file__).resolve()
+project_root = script_path.parents[1]  
+sys.path.insert(0, str(project_root))
+
+# Custom object import
+from external.automato.automato import Automato
+from core.helper_functions import average_delta, empiric_mod_of_contin, optimal_resolution
+from core.custom_cover import ResolutionCover
+from core.custom_clusterer import RipsClustering
+
+FIG_DIR = project_root / "figures" / "Stanford_Bunny"
+# Create figures folder if it doesn't exist
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 X = gudhi.datasets.remote.fetch_bunny(file_path=None, accept_license=False)
 
@@ -29,11 +30,6 @@ z = X[:, 1]
 z_min = z.min()
 z_max = z.max()
 y = (z - z_min) / (z_max - z_min)
-
-
-if not os.path.exists("./mapper_applications/figures_Bunny"):
-    os.mkdir("./mapper_applications/figures_Bunny")
-
 
 
 overlap_fracs = [0.35, 0.4, 0.45, 0.49]
@@ -133,8 +129,5 @@ for overlap_frac in overlap_fracs:
                 height=400,
                 )
 
-            filename = (
-                "./mapper_applications/figures_Bunny/Bunny_" 
-                + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
-                )
-            fig.write_image(filename)
+            filename = FIG_DIR / f"Bunndy_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            fig.write_image(str(filename))
