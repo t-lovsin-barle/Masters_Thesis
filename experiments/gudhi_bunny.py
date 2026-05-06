@@ -129,8 +129,5 @@ for overlap_frac in overlap_fracs:
                 height=400,
                 )
 
-            filename = (
-                "./figures/Stanford_Bunny/Bunny_" 
-                + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
-                )
-            fig.write_image(filename)
+            filename = FIG_DIR / f"Bunndy_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            fig.write_image(str(filename))
