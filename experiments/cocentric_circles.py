@@ -22,12 +22,13 @@ FIG_DIR = project_root / "figures" / "Cocentric_Circles"
 # Create figures folder if it doesn't exist
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
+n_jobs = 1
+
 for noise in noise_levels:
-   	FIG_DIR_ = project_root / "figures" / "Cocentric_Circles" / "noise_" + f"{noise}"
-    # Create figures folder if it doesn't exist
-    FIG_DIR_.mkdir(parents=True, exist_ok=True)
-    '''if not os.path.exists("./mapper_applications/figures_circles/noise_" + f"{noise}"):
-        os.mkdir("./mapper_applications/figures_circles/noise_" + f"{noise}")'''
+   FIG_DIR_ = project_root / "figures" / "Cocentric_Circles" / f"noise_{noise}"
+   # Create figures folder if it doesn't exist
+   FIG_DIR_.mkdir(parents=True, exist_ok=True)
+
     
     X, y = make_circles(n_samples=1000, noise=noise, factor=0.3, random_state=42)
     fig = plotting.plot_point_cloud(
@@ -91,7 +92,7 @@ for noise in noise_levels:
                 )
             for clusterer, clusterer_name in zip(clusterers, clusterer_names):
             
-                n_jobs = 1
+                
 
                 # Create Mapper pipeline
                 pipe_custom = mpr.make_mapper_pipeline(
@@ -122,8 +123,5 @@ for noise in noise_levels:
                     height=400,
                     )
 
-                filename = (
-                    "./mapper_applications/figures_circles/noise_" 
-                    + f"{noise}/circles_{noise}_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
-                    )
-                fig.write_image(filename)
+                filename = FIG_DIR_ / f"mapper_plot_{overlap_frac}.svg"
+                fig.write_image(str(filename))
