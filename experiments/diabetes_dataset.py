@@ -1,36 +1,43 @@
 # Code to import automato
 import sys
 import os
+from pathlib import Path
+import numpy as np
+import pandas as pd  
+import gtda.mapper as mpr  
+from sklearn.preprocessing import StandardScaler  
 
-current_file = os.path.abspath(__file__)
+'''current_file = os.path.abspath(__file__)
 project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
-sys.path.insert(0, project_root)
+sys.path.insert(0, project_root)'''
+
+script_path = Path(__file__).resolve()
+project_root = script_path.parents[1]  
+sys.path.insert(0, str(project_root))
 
 # Custom objects import
-from custom_cover import ResolutionCover
-from custom_clusterer import RipsClustering
-from automato import Automato
-from helper_functions import compute_parameters
+from core.custom_cover import ResolutionCover
+from core.custom_clusterer import RipsClustering
+from core.helper_functions import compute_parameters,
+from external.automato.automato import Automato
 
-import numpy as np
-import pandas as pd  # type: ignore
-
-import gtda.mapper as mpr  # type: ignore
-from sklearn.preprocessing import StandardScaler  # type: ignore
-
-
+# Path definitions
+DATA_DIR = project_root / "data"
+FIG_DIR = project_root / "figures" / "figures_Diabetes_epsilon=0"
+# Create figures folder if it doesn't exist
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load diabetes data
-df = pd.read_csv("./mapper_applications/chemdiab.csv", index_col=[0])
+df = pd.read_csv("./data/chemdiab.csv", index_col=[0])
 X, y = df.values[:, :-1], df.values[:, -1]
 X = StandardScaler().fit_transform(X)
 y = np.where(y == "Normal", 0, y)
 y = np.where(y == "Chemical_Diabetic", 1, y)
 y = np.where(y == "Overt_Diabetic", 1, y)
 
-# Create folder
-if not os.path.exists("./mapper_applications/figures_Diabetes_epsilon=0"):
-    os.mkdir("./mapper_applications/figures_Diabetes_epsilon=0")
+'''# Create folder
+if not os.path.exists("./figures/figures_Diabetes_epsilon=0"):
+    os.mkdir("./figures/figures_Diabetes_epsilon=0")'''
         
 # Innitiate different overlaps and filters. Filters need to have .fit() and .transform() functions
 overlap_fracs = [0.35, 0.4, 0.45, 0.49]
@@ -41,6 +48,7 @@ filter_names = [
         "Eccentricity"
 ]
 
+n_jobs = 1
 
 for overlap_frac in overlap_fracs:
     for filter_func , filter_name in zip(filters, filter_names):
@@ -69,8 +77,6 @@ for overlap_frac in overlap_fracs:
                 gain=overlap_frac
             )
         for clusterer, clusterer_name in zip(clusterers, clusterer_names):
-        
-            n_jobs = 1
 
             # Create Mapper pipeline
             pipe_custom = mpr.make_mapper_pipeline(
@@ -102,7 +108,7 @@ for overlap_frac in overlap_fracs:
                 )
             # Save Mapper figure to disk
             filename = (
-                "./mapper_applications/figures_Diabetes_epsilon=0/Diabetes_"
+                "./figures/figures_Diabetes_epsilon=0/Diabetes_"
                 + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
             )
             fig.write_image(filename)
