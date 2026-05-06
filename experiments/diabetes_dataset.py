@@ -99,9 +99,7 @@ for overlap_frac in overlap_fracs:
                 height=400,
                 )
             # Save Mapper figure to disk
-            filename = (
-                "./figures/Diabetes/epsilon=0/Diabetes_"
-                + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            filename = FIG_DIR / f"Diabetes_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
             )
             fig.write_image(filename)
 
