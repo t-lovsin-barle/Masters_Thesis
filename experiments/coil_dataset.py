@@ -1,42 +1,37 @@
-# Code to recreate results of Mapper applied to COIL data
-
-import sys
 import os
- 
-# Add the project root to sys.path so 'automato' can be imported
-current_file = os.path.abspath(__file__)
-project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
-sys.path.insert(0, project_root)
-
-import gtda.mapper as mpr  # type: ignore
-from custom_cover import ResolutionCover
-from custom_clusterer import RipsClustering, AutoRipsClustering
-import numpy as np
-import pandas as pd  # type: ignore
-import sklearn
-
-from automato import Automato
-from scipy.spatial.distance import pdist, squareform
-from helper_functions import compute_parameters
-
+import sys
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from PIL import Image
+import gtda.mapper as mpr
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
+script_path = Path(__file__).resolve()
+project_root = script_path.parents[1]
+sys.path.insert(0, str(project_root))
+
+from core.custom_cover import ResolutionCover
+from core.custom_clusterer import RipsClustering
+from core.helper_functions import compute_parameters
+from external.automato.automato import Automato
+
+DATA_DIR = project_root / "external" / "COIL_100_Duck"
+FIG_DIR = project_root / "figures" / "COIL" / "epsilon=0"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 # Download: https://www.cs.columbia.edu/CAVE/software/softlib/coil-100.php
 # Path to the image folder
-image_dir = r'C:\Users\trist\Downloads\coil-100\coil-100'
+
 
 data = []
-
 # Loop through obj74 images
-for fname in os.listdir(image_dir):
-    if fname.startswith("obj74__") and fname.endswith(".png"):
-        angle = int(fname.split('__')[1].split('.')[0])
-        img_path = os.path.join(image_dir, fname)
+for file in os.listdir(DATA_DIR):
+    
+        angle = int(file.stem.split("__")[-1]
 
         # Load image, convert to grayscale and scale pixel values to [0, 1]
-        img = Image.open(img_path).convert('L')  # 'L' for grayscale
+        img = Image.open(file).convert('L')  # 'L' for grayscale
         img_array = np.array(img) / 255.0  # normalize to [0, 1]
         img_flat = img_array.flatten(order='F')
         
@@ -48,11 +43,7 @@ for fname in os.listdir(image_dir):
 
 # Create DataFrame
 df = pd.DataFrame(data)
-X, y = df.values[:, :-1], df.values[:, -1]
-
-if not os.path.exists("./mapper_applications/figures_COIL_epsilon=0"):
-    os.mkdir("./mapper_applications/figures_COIL_epsilon=0")
-        
+X, y = df.values[:, :-1], df.values[:, -1]        
 
 overlap_fracs = [0.35, 0.4, 0.45, 0.49]
 filters = [
@@ -61,6 +52,8 @@ filters = [
 filter_names = [
         "PCA"
 ]
+
+n_jobs = 1
 
 for overlap_frac in overlap_fracs:
     for filter_func , filter_name in zip(filters, filter_names):
@@ -90,7 +83,7 @@ for overlap_frac in overlap_fracs:
             )
         for clusterer, clusterer_name in zip(clusterers, clusterer_names):
         
-            n_jobs = 1
+           
 
             # Create Mapper pipeline
             pipe_custom = mpr.make_mapper_pipeline(
@@ -121,9 +114,6 @@ for overlap_frac in overlap_fracs:
                 height=400,
                 )
             # Save Mapper figure to disk
-            filename = (
-                "./mapper_applications/figures_COIL_epsilon=0/COIL_"
-                + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
-            )
-            fig.write_image(filename)
+            filename = FIG_DIR / f"COIL_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
+            fig.write_image(str(filename))
 
