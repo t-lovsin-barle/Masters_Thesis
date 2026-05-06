@@ -123,5 +123,5 @@ for noise in noise_levels:
                     height=400,
                     )
 
-                filename = FIG_DIR_ / f"mapper_plot_{overlap_frac}.svg"
+                filename = FIG_DIR_ / f"circles_{filter}_{clusterer}_{overlap_frac}.svg"
                 fig.write_image(str(filename))
