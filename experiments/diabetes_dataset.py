@@ -100,6 +100,5 @@ for overlap_frac in overlap_fracs:
                 )
             # Save Mapper figure to disk
             filename = FIG_DIR / f"Diabetes_{filter_name}_{clusterer_name}_{overlap_frac}.svg"
-            )
-            fig.write_image(filename)
+            fig.write_image(str(filename))
 
