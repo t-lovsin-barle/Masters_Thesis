@@ -1,34 +1,33 @@
-# Code to recreate results of Mapper applied to COIL data
-
 import sys
 import os
- 
-# Add the project root to sys.path so 'automato' can be imported
-current_file = os.path.abspath(__file__)
-project_root = os.path.abspath(os.path.join(current_file, '..', '..'))
-sys.path.insert(0, project_root)
-
-import gtda.mapper as mpr  # type: ignore
-from custom_cover import ResolutionCover
-from custom_clusterer import RipsClustering
+import gtda.mapper as mpr  
+from sklearn.datasets import make_circles
+from dataset_utils import plotting
 import numpy as np
 import sklearn
 
-from automato import Automato
-from helper_functions import compute_parameters, DTM_cuttoff
-from sklearn.datasets import make_circles
+script_path = Path(__file__).resolve()
+project_root = script_path.parents[1]
+sys.path.insert(0, str(project_root))
 
-from dataset_utils import plotting
+from core.custom_cover import ResolutionCover
+from core.custom_clusterer import RipsClustering
+from external.automato.automato import Automato
+from core.helper_functions import compute_parameters, DTM_cuttoff
 
 
 noise_levels = [0.00, 0.02, 0.04, 0.06, 0.08, 0.10]
 
-if not os.path.exists("./mapper_applications/figures_circles"):
-    os.mkdir("./mapper_applications/figures_circles")
+FIG_DIR = project_root / "figures" / "Cocentric_Circles"
+# Create figures folder if it doesn't exist
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 for noise in noise_levels:
-    if not os.path.exists("./mapper_applications/figures_circles/noise_" + f"{noise}"):
-        os.mkdir("./mapper_applications/figures_circles/noise_" + f"{noise}")
+   	FIG_DIR_ = project_root / "figures" / "Cocentric_Circles" / "noise_" + f"{noise}"
+    # Create figures folder if it doesn't exist
+    FIG_DIR_.mkdir(parents=True, exist_ok=True)
+    '''if not os.path.exists("./mapper_applications/figures_circles/noise_" + f"{noise}"):
+        os.mkdir("./mapper_applications/figures_circles/noise_" + f"{noise}")'''
     
     X, y = make_circles(n_samples=1000, noise=noise, factor=0.3, random_state=42)
     fig = plotting.plot_point_cloud(
