@@ -32,11 +32,6 @@ z_max = z.max()
 y = (z - z_min) / (z_max - z_min)
 
 
-if not os.path.exists("./mapper_applications/figures_Bunny"):
-    os.mkdir("./mapper_applications/figures_Bunny")
-
-
-
 overlap_fracs = [0.35, 0.4, 0.45, 0.49]
 filters = [
         mpr.Projection(columns=1),
@@ -135,7 +130,7 @@ for overlap_frac in overlap_fracs:
                 )
 
             filename = (
-                "./mapper_applications/figures_Bunny/Bunny_" 
+                "./figures/Stanford_Bunny/Bunny_" 
                 + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
                 )
             fig.write_image(filename)
