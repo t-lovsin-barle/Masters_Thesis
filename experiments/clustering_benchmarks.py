@@ -19,7 +19,7 @@ from core.custom_clusterer import RipsClustering
 from core.helper_functions import compute_parameters
 from external.automato.automato import Automato
 
-DATA_PATH = project_root / "data" / "Clustering_Benchmarks"
+DATA_PATH = project_root / "external" / "clustering_benchmarks"
 BASE_FIG_DIR = project_root / "figures" / "Clustering_Benchmarks"
 
 battery_names = ["wut", "sipu", "fcps", "other"]
