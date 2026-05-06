@@ -22,8 +22,6 @@ from external.automato.automato import Automato
 DATA_PATH = project_root / "data" / "Clustering_Benchmarks"
 BASE_FIG_DIR = project_root / "figures" / "Clustering_Benchmarks"
 
-data_path = r"C:\Users\trist\Downloads\clustering-data-v1-1.1.0\clustering-data-v1-1.1.0"
-
 battery_names = ["wut", "sipu", "fcps", "other"]
 
 battery_sets = {
