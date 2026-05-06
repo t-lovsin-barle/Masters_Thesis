@@ -1,3 +1,3 @@
-from .automato import Automato
+from external.automato.automato import Automato
 
 __all__ = ["Automato"]

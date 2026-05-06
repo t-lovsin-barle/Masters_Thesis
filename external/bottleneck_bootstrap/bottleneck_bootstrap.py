@@ -7,7 +7,7 @@ from joblib import Parallel, delayed  # type: ignore
 from sklearn.base import BaseEstimator  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
 
-from persistence_plotting import plot_persistences
+from external.persistence_plotting import plot_persistences
 
 
 class BottleneckBootstrap(BaseEstimator):

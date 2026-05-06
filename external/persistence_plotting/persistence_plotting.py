@@ -3,7 +3,7 @@ import plotly.graph_objs as gobj  # type: ignore
 from gudhi import plot_persistence_barcode  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 
-from persistence_plotting import cs_wong
+from external.persistence_plotting import cs_wong
 
 
 def plot_persistences(

@@ -13,7 +13,7 @@ sys.path.insert(0, project_root)
 from scipy.spatial.distance import cdist
 from gudhi.point_cloud.dtm import DTMDensity
 
-from automato import Automato
+from external.automato.automato import Automato
 # Average delta over N random samples
 def average_delta(X, dist_matrix=None, n_iterations=100, beta=0.001, magic = 10): 
     delta = 0

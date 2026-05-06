@@ -5,8 +5,8 @@ from gudhi.point_cloud.knn import KNearestNeighbors as KNN  # type: ignore
 from sklearn.base import BaseEstimator, ClusterMixin  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
 
-from bottleneck_bootstrap import BottleneckBootstrap
-from persistence_plotting import plot_persistences
+from external.bottleneck_bootstrap import BottleneckBootstrap
+from external.persistence_plotting import plot_persistences
 
 
 class _Customato(Tomato, ClusterMixin, BaseEstimator):
