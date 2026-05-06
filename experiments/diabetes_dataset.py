@@ -19,7 +19,7 @@ from external.automato.automato import Automato
 
 # Path definitions
 DATA_DIR = project_root / "data"
-FIG_DIR = project_root / "figures" / "figures_Diabetes_epsilon=0"
+FIG_DIR = project_root / "figures" / "Diabetes" / "epsilon=0"
 # Create figures folder if it doesn't exist
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -100,7 +100,7 @@ for overlap_frac in overlap_fracs:
                 )
             # Save Mapper figure to disk
             filename = (
-                "./figures/figures_Diabetes_epsilon=0/Diabetes_"
+                "./figures/Diabetes/epsilon=0/Diabetes_"
                 + f"{filter_name}_{clusterer_name}_{overlap_frac}.svg"
             )
             fig.write_image(filename)
