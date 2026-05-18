@@ -13,7 +13,7 @@ which can be found here: https://arxiv.org/abs/2408.06958.
 ## 📦 Installation & Setup
 To clone this repository along with its required submodules and set up the environment:
 
-bash
+'''bash
 # Clone recursively to fetch external benchmarks and libraries
 git clone --recursive [https://github.com/t-lovsin-barle/Masters_Thesis.git](https://github.com/t-lovsin-barle/Masters_Thesis.git)
 cd Masters_Thesis
