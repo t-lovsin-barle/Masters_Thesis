@@ -20,7 +20,7 @@ cd Masters_Thesis
 
 # Install dependencies
 pip install -r requirements.txt
-
+```
 ---
 
 ## 🎯 Experimental Objectives (Chapter 5)
