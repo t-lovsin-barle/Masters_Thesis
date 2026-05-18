@@ -10,6 +10,19 @@ which can be found here: https://arxiv.org/abs/2408.06958.
 
 ---
 
+## 📦 Installation & Setup
+To clone this repository along with its required submodules and set up the environment:
+
+bash
+# Clone recursively to fetch external benchmarks and libraries
+git clone --recursive [https://github.com/t-lovsin-barle/Masters_Thesis.git](https://github.com/t-lovsin-barle/Masters_Thesis.git)
+cd Masters_Thesis
+
+# Install dependencies
+pip install -r requirements.txt
+
+---
+
 ## 🎯 Experimental Objectives (Chapter 5)
 
 [cite_start]The primary goal of the experimental battery was to systematically analyze how the optimal parameter selection framework responds under different clustering algorithms, filter functions, and varying noise thresholds. The evaluation is divided into three key areas:
